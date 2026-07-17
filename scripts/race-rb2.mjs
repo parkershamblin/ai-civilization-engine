@@ -131,35 +131,97 @@ for (let i = 0; i < 40; i++) {
 }
 console.log('all 6 racers online')
 
-// Posts are explicit (--red/--blue) or symmetric around the origin — world
-// spawn on this map sits near 0,0 and the flagship wants far, fair spawns.
-const world = { x: 0, z: 0 }
+// Posts are explicit (--red/--blue) or auto-located: the nearest FOREST to a
+// symmetric anchor on each side of the origin. Attempt-1 lesson: blind
+// ±separation/2 posts landed both teams on treeless mountainside — "no wood
+// within 48 blocks" strangles the bootstrap before the first milestone. A
+// race needs trees more than it needs geometric purity; symmetry is
+// approximate (both teams get the nearest forest to equal-distance anchors).
+function locateForest(anchorX, anchorZ) {
+  const out = rcon(`execute positioned ${anchorX} 100 ${anchorZ} run locate biome #minecraft:is_forest`)
+  const m = out.match(/\[(-?\d+), (~|-?\d+), (-?\d+)\]/)
+  if (!m) {
+    console.error(`could not locate a forest near ${anchorX},${anchorZ}: ${out}`)
+    process.exit(3)
+  }
+  return [Number(m[1]), null, Number(m[3])]
+}
 const posts = {
-  red: flag('red') ? flag('red').split(',').map(Number) : [world.x - separation / 2, null, world.z],
-  blue: flag('blue') ? flag('blue').split(',').map(Number) : [world.x + separation / 2, null, world.z],
+  red: flag('red') ? flag('red').split(',').map(Number) : locateForest(-separation / 2, 0),
+  blue: flag('blue') ? flag('blue').split(',').map(Number) : locateForest(separation / 2, 0),
+}
+{
+  const [rx, , rz] = posts.red
+  const [bx, , bz] = posts.blue
+  const apart = Math.round(Math.hypot(rx - bx, rz - bz))
+  console.log(`  posts: red ${rx},${rz} · blue ${bx},${bz} · ${apart} blocks apart`)
+  if (apart < separation / 3) {
+    console.error(`  posts landed too close (${apart} < ${Math.round(separation / 3)}) — both anchors found the same forest; pass --red/--blue explicitly`)
+    process.exit(3)
+  }
+}
+// Stationing is VERIFIED, then made sticky by a state-reset respawn.
+// Attempt-2 lesson: a tp lands, but a racer mid-pathfind keeps its
+// in-flight goal (computed at the old position) and WALKS 150 blocks back
+// off the post — both early attempts silently raced on the barren spawn
+// mountain. So: spreadplayers with distance verification and retry, anchor
+// the spawnpoint at the verified post, clear the pack, then `kill` — with
+// nothing carried the respawn is lossless and resets every in-flight goal
+// at the post. A racer that can't be stationed fails the launch loudly.
+const posOf = (name) => {
+  // matchAll + capture group: .match(/…d/g) returns the FULL match with the
+  // trailing 'd', and Number('-152.5d') is NaN — that one letter cost a take.
+  const m = [...rcon(`data get entity ${name} Pos`).matchAll(/(-?\d+(?:\.\d+)?)d/g)]
+  return m.length === 3 ? m.map((match) => Math.floor(Number(match[1]))) : null
 }
 for (const { teamId, members } of teams) {
-  let [x, y, z] = posts[teamId]
-  if (y === null) {
-    // Land the team on the surface: spreadplayers respects terrain.
-    rcon(`spreadplayers ${x} ${z} 0 8 false ${members.map((m) => m.minecraftUsername).join(' ')}`)
-    await sleep(1_000)
-  }
+  const [x, y, z] = posts[teamId]
   for (const m of members) {
-    if (y !== null) {
-      console.log('  ' + rcon(`tp ${m.minecraftUsername} ${x} ${y} ${z}`))
+    let stationed = false
+    for (let attempt = 0; attempt < 5 && !stationed; attempt++) {
+      if (y !== null) {
+        rcon(`tp ${m.minecraftUsername} ${x} ${y} ${z}`)
+      } else {
+        // Growing radius: under dense canopy (dark forest) small radii can
+        // find no legal surface and fail — the output says so, so log it.
+        const radius = 8 * (attempt + 1)
+        const out = rcon(`spreadplayers ${x} ${z} 0 ${radius} false ${m.minecraftUsername}`)
+        if (!out.startsWith('Spread')) {
+          console.log(`  spreadplayers r=${radius} for ${m.minecraftUsername}: ${out}`)
+        }
+      }
+      await sleep(1_500)
+      const at = posOf(m.minecraftUsername)
+      if (!at || Math.hypot(at[0] - x, at[2] - z) > 24) {
+        console.log(`  station check ${m.minecraftUsername} try ${attempt + 1}: at ${JSON.stringify(at)} vs post ${x},${z}`)
+      }
+      if (at && Math.hypot(at[0] - x, at[2] - z) <= 24) {
+        rcon(`spawnpoint ${m.minecraftUsername} ${at[0]} ${at[1]} ${at[2]}`)
+        rcon(`clear ${m.minecraftUsername}`)
+        rcon(`kill ${m.minecraftUsername}`) // nothing carried; the respawn resets pathfinding at the post
+        stationed = true
+      }
     }
-    // A fresh race starts from nothing; spawnpoint = the team post, so
-    // keepInventory deaths respawn racers at their post, not world spawn.
-    rcon(`clear ${m.minecraftUsername}`)
-    const at = rcon(`data get entity ${m.minecraftUsername} Pos`).match(/(-?\d+(?:\.\d+)?)d/g)
-    if (at) {
-      const [px, py, pz] = at.map((s) => Math.floor(Number(s)))
-      rcon(`spawnpoint ${m.minecraftUsername} ${px} ${py} ${pz}`)
+    if (!stationed) {
+      console.error(`  could not station ${m.minecraftUsername} at ${x},${z}`)
+      process.exit(3)
     }
   }
-  console.log(`  team ${teamId} stationed near x=${x} z=${z}, packs cleared, spawnpoints set`)
+  console.log(`  team ${teamId} stationed at x=${x} z=${z} (verified), packs cleared, spawnpoints anchored`)
 }
+// Post-respawn verification: every racer back online AND standing at its post.
+await sleep(8_000)
+for (const { teamId, members } of teams) {
+  const [x, , z] = posts[teamId]
+  for (const m of members) {
+    const at = posOf(m.minecraftUsername)
+    if (!at || Math.hypot(at[0] - x, at[2] - z) > 32) {
+      console.error(`  ${m.minecraftUsername} is not at the ${teamId} post after respawn (${at})`)
+      process.exit(3)
+    }
+  }
+}
+console.log('  respawn verification: all 6 racers standing at their posts')
 
 // --------------------------------------------------------------- the attempt
 console.log('— attempt —')

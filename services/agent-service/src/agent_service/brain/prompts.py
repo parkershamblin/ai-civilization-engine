@@ -223,9 +223,14 @@ def _race_section(race: RaceView) -> str:
     ]
     if next_unmet:
         lines.append(f"Your next step: {_RACE_NEXT_HINT[next_unmet]}.")
+    # Directive pressure (attempt-1 lesson: 107 chats to 1 gather — the
+    # friendly "split the work out loud" line licensed a debate club).
+    # Races are won by hands, and the directive must outrank sociability.
     lines.append(
-        "Split the work out loud: say in chat what you are doing and what you carry, "
-        "and answer teammates who ask — a team that talks mines twice as fast."
+        "RACE DISCIPLINE: act, don't discuss. Choose gather or craft this turn unless you are "
+        "physically unable; move only toward resources; chat ONLY to report a handoff a teammate "
+        "needs (one short line, at most once in a while). Every turn spent talking is a turn the "
+        "rival team spent mining."
     )
     return "\n".join(lines)
 
