@@ -21,8 +21,13 @@ const ATTACK_REACH = 3.5
 export const FLEE_DISTANCE = 24
 /** a second hostile within this along the flee path deflects the bearing */
 const DEFLECT_RADIUS = 16
-/** cornered = no net movement across this window while fleeing */
-const NO_PROGRESS_WINDOW_MS = 3_000
+/** cornered = no net movement across this window while fleeing. Must be
+ *  comfortably wider than the pathfinder's think budget (10s tickTimeout-
+ *  starved A* can take seconds to START moving) — 3s produced false
+ *  cornered verdicts fleet-wide on the first night (live-observed
+ *  2026-07-17): the goal got cleared before the path began, and bots
+ *  jittered in place instead of fleeing. */
+const NO_PROGRESS_WINDOW_MS = 7_000
 const NO_PROGRESS_MIN_BLOCKS = 1.5
 
 /** Fleet-wide fight slots — ONE instance per process, shared by every

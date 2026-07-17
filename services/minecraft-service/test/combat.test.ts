@@ -220,7 +220,11 @@ describe('FightDriver', () => {
     }
     const driver = new FightDriver(() => combatBot(state), new FightSlots(4), { info: () => {}, warn: () => {} }, config)
     const flee = driver.flee({ abandoned: false })
-    await vi.advanceTimersByTimeAsync(3_600)
+    // The window is deliberately wider than the pathfinder think budget —
+    // a slow path start must never read as cornered (first-night lesson).
+    await vi.advanceTimersByTimeAsync(6_000)
+    expect(state.attacks).toEqual([]) // still patient
+    await vi.advanceTimersByTimeAsync(1_600)
     await expect(flee).resolves.toBe('cornered')
     expect(state.attacks).toEqual([9]) // the flail — one honest swing, not a pretend escape
   })

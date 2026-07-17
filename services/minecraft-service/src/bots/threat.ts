@@ -406,13 +406,15 @@ export class ThreatWatcher {
       return
     }
     episode.lastOverwhelmedAt = now
-    const position = this.position(this.deps.bot())
+    const liveBot = this.deps.bot()
+    const position = this.position(liveBot)
+    const inAlert = (liveBot?.hostiles() ?? []).filter((h) => h.distance <= this.deps.config.alertRadius + CLOSE_HYSTERESIS)
     this.deps.emit(
       'overwhelmed',
       episode.threatType,
       episode.response,
-      1,
-      0,
+      Math.max(1, inAlert.length),
+      round1(inAlert[0]?.distance ?? 0),
       position,
       'the maneuver is not working — cornered or out-matched',
     )
