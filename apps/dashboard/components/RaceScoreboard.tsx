@@ -122,20 +122,32 @@ export function RaceScoreboard() {
       if (live) {
         setNames(table)
       }
-      // Newest attempt: the slice endpoint is ascending, so page to the last
-      // AttemptStarted, then replay its aggregate slice for current state.
-      const startedPage = await (await fetch('/api/events/events?type=AttemptStarted&limit=200')).json()
-      const started = startedPage.data.at(-1)
+      // Newest attempt: the store pages ascending with a 100 cap — follow
+      // the cursor to the last page, take the last AttemptStarted, then
+      // replay its aggregate slice for current state.
+      let started: CivEvent | undefined
+      let cursor: string | null = null
+      do {
+        const url = `/api/events/events?type=AttemptStarted&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+        const page: { data: CivEvent[]; nextCursor: string | null } = await (await fetch(url)).json()
+        if (page.data.length > 0) {
+          started = page.data.at(-1)
+        }
+        cursor = page.nextCursor
+      } while (cursor)
       if (!started || !live) {
         return
       }
       let state = fromStarted(started)
-      const slice = await (
-        await fetch(`/api/events/events?aggregate-type=Attempt&aggregate-id=${state.attemptId}&limit=100`)
-      ).json()
-      for (const event of slice.data) {
-        state = ingest(state, event, table)
-      }
+      let sliceCursor: string | null = null
+      do {
+        const url = `/api/events/events?aggregate-type=Attempt&aggregate-id=${state.attemptId}&limit=100${sliceCursor ? `&cursor=${encodeURIComponent(sliceCursor)}` : ''}`
+        const slice: { data: CivEvent[]; nextCursor: string | null } = await (await fetch(url)).json()
+        for (const event of slice.data) {
+          state = ingest(state, event, table)
+        }
+        sliceCursor = slice.nextCursor
+      } while (sliceCursor)
       if (live) {
         setRace(state)
       }
