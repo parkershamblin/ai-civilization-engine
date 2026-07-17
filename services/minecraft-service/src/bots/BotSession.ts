@@ -1174,6 +1174,24 @@ export class BotSession {
         collected += gained
       }
     }
+    // Ruling 6: hunt emits ResourceGathered per drop type — the economy
+    // primitive the ledger already carries. An empty kill emits one honest
+    // zero on the primary meat (the ghost-block precedent: the record keeps
+    // what the world refused to yield).
+    const emissions =
+      collected > 0
+        ? Object.entries(drops)
+        : ([[PRIMARY_MEAT[target.name] ?? 'meat', 0]] as Array<[string, number]>)
+    for (const [resourceType, quantity] of emissions) {
+      void this.deps.producer.publish(
+        'world.events',
+        buildEnvelope({
+          eventType: 'ResourceGathered',
+          aggregateId: this.villagerId,
+          payload: { villagerId: this.villagerId, resourceType, quantity, position: outcome.lastPosition },
+        }),
+      )
+    }
     if (collected > 0) {
       this.huntBlacklist.delete(target.id)
       if (this.busy === 'action') {
