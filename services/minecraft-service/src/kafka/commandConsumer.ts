@@ -2,16 +2,20 @@ import { Kafka, type Consumer, logLevel } from 'kafkajs'
 import type { EventEnvelope } from '@civ/events/ts'
 import { logger } from '../logging.ts'
 import type { CommandExecutor } from '../actions/executor.ts'
+import { VillagerLanes } from './villagerLanes.ts'
 
 /**
  * The single executor group for commands.minecraft. Parses envelopes and hands
  * them to the CommandExecutor, which owns dedupe, the timeout watchdog, and
- * the exactly-one-outcome invariant. Partitions are consumed concurrently;
- * WITHIN a partition commands run sequentially — which is exactly the
- * per-villager ordering guarantee (partition key = villagerId).
+ * the exactly-one-outcome invariant. Partitions are consumed concurrently, and
+ * WITHIN a partition commands fan out to per-villager lanes (villagerLanes.ts):
+ * same villager = strict arrival order, different villagers = concurrent even
+ * when they hash to the same partition. Partition order alone is NOT the
+ * per-villager guarantee anymore — the lane is.
  */
 export class CommandConsumer {
   private consumer: Consumer
+  private readonly lanes = new VillagerLanes()
 
   constructor(
     brokers: string[],
@@ -63,7 +67,14 @@ export class CommandConsumer {
           logger.warn({ eventType: envelope.eventType }, 'parked non-command on commands.minecraft')
           return
         }
-        await this.executor.execute(envelope)
+        // Enqueue, don't await: a slow action must only block ITS villager's
+        // lane, never partition-mates. Offset semantics and the crash-loss
+        // trade are documented on VillagerLanes.
+        const villagerId =
+          typeof (envelope.payload as { villagerId?: unknown })?.villagerId === 'string'
+            ? (envelope.payload as { villagerId: string }).villagerId
+            : envelope.aggregateId
+        void this.lanes.dispatch(villagerId, () => this.executor.execute(envelope))
       },
     })
     logger.info('command consumer running')

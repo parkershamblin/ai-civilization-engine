@@ -95,6 +95,52 @@ def test_race_section_win_rung_is_the_last_hint():
     assert "WINS THE RACE" in section
 
 
+# The attempt-3 lesson (Fen, 2026-07-17): the team ladder had first_coal ✓, so
+# the wood-bootstrap prose lived only on a crossed-off rung — when Fen's wooden
+# pickaxe broke of durability, the shown hint said "mine iron ore" and the
+# recovery path was invisible. The gear check reads the PACK, not the ladder.
+
+
+def _snapshot_with(inventory):
+    return {"position": {"x": 0, "y": 64, "z": 0}, "health": 20, "food": 20, "timeOfDay": 1000, "inventory": inventory}
+
+
+def test_gear_check_overrides_team_rung_when_pickaxe_is_gone():
+    state = _state()
+    state.milestone(_milestone("red", "first_coal"))
+    section = _race_section(state.snapshot(RED_1), _snapshot_with([{"item": "cobblestone", "count": 12}]))
+    assert "GEAR CHECK: you carry NO pickaxe" in section
+    assert "gather wood FIRST" in section
+    # the team rung's hint stands down while the villager is bare-handed
+    assert "Your next step:" not in section
+
+
+def test_gear_check_says_craft_now_when_wood_is_in_the_pack():
+    state = _state()
+    state.milestone(_milestone("red", "first_coal"))
+    section = _race_section(state.snapshot(RED_1), _snapshot_with([{"item": "dark_oak_log", "count": 3}]))
+    assert "craft wooden_pickaxe NOW" in section
+    assert "gather wood FIRST" not in section
+
+
+def test_gear_check_stays_silent_while_armed():
+    state = _state()
+    state.milestone(_milestone("red", "first_coal"))
+    section = _race_section(
+        state.snapshot(RED_1), _snapshot_with([{"item": "wooden_pickaxe", "count": 1}])
+    )
+    assert "GEAR CHECK" not in section
+    assert "Your next step:" in section  # the team rung is back in charge
+
+
+def test_gear_check_absent_without_a_snapshot():
+    state = _state()
+    state.milestone(_milestone("red", "first_coal"))
+    section = _race_section(state.snapshot(RED_1))
+    assert "GEAR CHECK" not in section
+    assert "Your next step:" in section
+
+
 def test_user_prompt_carries_the_standing_race_section_and_news_lines():
     state = _state()
     prompt = user_prompt(

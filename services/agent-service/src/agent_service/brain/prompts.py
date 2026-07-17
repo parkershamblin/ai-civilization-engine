@@ -203,7 +203,39 @@ _RACE_NEXT_HINT = {
 }
 
 
-def _race_section(race: RaceView) -> str:
+_PICKAXES = ("wooden_pickaxe", "stone_pickaxe", "iron_pickaxe", "golden_pickaxe", "diamond_pickaxe", "netherite_pickaxe")
+
+
+def _gear_check_line(snapshot: dict[str, Any] | None) -> str | None:
+    """The per-villager inventory-conditional rung (RB-2 attempt-3 lesson):
+    the TEAM ladder hides the wood→pickaxe bootstrap once first_coal is ✓ —
+    but a pickaxe can break (Fen's wooden one died of durability mid-attempt,
+    traced in the ledger 2026-07-17 18:03→18:04), and the villager then needs
+    the bootstrap prose the crossed-off rung no longer shows. Team milestones
+    say where the TEAM is; only the pack says what THIS villager can do."""
+    if not snapshot:
+        return None
+    counts: dict[str, int] = {}
+    for entry in snapshot.get("inventory", []):
+        counts[entry["item"]] = counts.get(entry["item"], 0) + entry["count"]
+    if any(counts.get(p) for p in _PICKAXES):
+        return None  # armed — the team rung's hint is the right one
+    logs = sum(n for item, n in counts.items() if item.endswith("_log"))
+    planks = sum(n for item, n in counts.items() if item.endswith("_planks"))
+    # 9 planks covers the worst case from scratch: 3 head + 2-for-sticks + 4 table.
+    if logs >= 3 or planks >= 9:
+        return (
+            "GEAR CHECK: you carry NO pickaxe but you have wood — craft wooden_pickaxe NOW "
+            "(your body chains planks → sticks → crafting table on its own)."
+        )
+    return (
+        "GEAR CHECK: you carry NO pickaxe and not enough wood to make one — gather wood FIRST, "
+        "then craft wooden_pickaxe (your body chains planks → sticks → crafting table). "
+        "Without a pickaxe every ore and stone is out of reach."
+    )
+
+
+def _race_section(race: RaceView, snapshot: dict[str, Any] | None = None) -> str:
     """The standing race section: percepts decay off the queue, but a race
     must not — same rule as elections. Checklist truth comes from the
     ledger-fed cache, the next step from the tier table."""
@@ -221,7 +253,12 @@ def _race_section(race: RaceView) -> str:
         f"Rival standing: {rivals}.",
         f"Your team's ladder: {ladder}",
     ]
-    if next_unmet:
+    gear = _gear_check_line(snapshot)
+    if gear:
+        # The personal rung outranks the team rung: a bare-handed villager
+        # can't act on "mine iron ore" no matter how true it is for the team.
+        lines.append(gear)
+    elif next_unmet:
         lines.append(f"Your next step: {_RACE_NEXT_HINT[next_unmet]}.")
     # Directive pressure (attempt-1 lesson: 107 chats to 1 gather — the
     # friendly "split the work out loud" line licensed a debate club).
@@ -380,9 +417,10 @@ def user_prompt(
         if section:
             sections.append(section)
 
-    # The standing race section (RB-2): same decay rule as elections.
+    # The standing race section (RB-2): same decay rule as elections. The
+    # snapshot rides along for the per-villager gear check.
     if race is not None:
-        sections.append(_race_section(race))
+        sections.append(_race_section(race, snapshot))
 
     # Type-dispatch: unknown percept types are skipped, never a KeyError —
     # the queue outlives any single deploy's vocabulary.

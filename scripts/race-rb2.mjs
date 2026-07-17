@@ -5,7 +5,7 @@
 //
 // Usage:
 //   node scripts/race-rb2.mjs [--label take-1] [--difficulty easy|normal]
-//     [--red x,y,z] [--blue x,y,z] [--separation 300] [--stall-minutes 45]
+//     [--red x,y,z] [--blue x,y,z] [--separation 300] [--stall-minutes 75]
 //     [--practice]   (practice: skip the hard budget/tick preset checks)
 //
 // Team posts default to world spawn ± separation/2 on the x axis. Exit code:
@@ -27,7 +27,9 @@ const has = (name) => args.includes(`--${name}`)
 const label = flag('label', `rb2-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`)
 const wantDifficulty = flag('difficulty', 'easy')
 const separation = Number(flag('separation', '300'))
-const stallMinutes = Number(flag('stall-minutes', '45'))
+// 75m default: attempt 3's wood age needed ~45m before its first milestone —
+// 45m was nearly the whole bootstrap, so a slow-but-honest start read as a stall.
+const stallMinutes = Number(flag('stall-minutes', '75'))
 const practice = has('practice')
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
