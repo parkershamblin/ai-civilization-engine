@@ -225,6 +225,15 @@ else fake), `OPENAI_API_KEY` (optional — never required).
   10s stop window can discard it. `DIFFICULTY` env in compose only seeds new
   worlds. Both servers run offline mode: op entries need the offline UUID
   (derived from the name), not the Mojang one.
+- Paper's `spawn-protection=16` (server.properties default) silently rejects
+  block breaks by non-op players within 16 blocks of WORLD spawn — the bot's
+  client thinks the block broke, the server keeps it, and the dig "completes"
+  with zero yield (the ghost-dig fingerprint, cost two RB-1 drill runs).
+  Set to 0 in `/data/server.properties` (done 2026-07-17; needs a server
+  restart; survives in the volume but NOT `task nuke` — re-apply after).
+  Related mineflayer flake: `placeBlock` can throw "blockUpdate did not fire
+  within 5000ms" when the placement actually landed — placeCarried in
+  BotSession verifies the world instead of trusting the throw.
 - RCON `data get` output is ELLIPSIZED server-side past ~150 chars (measured
   2026-07-09: a literal `...` mid-SNBT) — full-inventory reads are impossible;
   read per-slot (`Inventory[i].id` / `.count`, stop at "Found no elements").

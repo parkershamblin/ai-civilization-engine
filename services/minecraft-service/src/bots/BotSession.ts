@@ -1033,12 +1033,20 @@ export class BotSession {
       return base.offset(p.x - base.x, p.y - base.y, p.z - base.z)
     }
     // Shared by the table and furnace flows — placing a carried block beside
-    // the bot is one skill; only the block differs.
+    // the bot is one skill; only the block differs. Interactive blocks are
+    // OFF the ground list: right-clicking a crafting table to place against
+    // it opens the table instead (no sneak in placeBlock) — the RB-1 drill
+    // watched a furnace try to stack onto the just-placed table and fail
+    // with "the spot reads air" three times.
+    const INTERACTIVE_GROUND = new Set(['crafting_table', 'furnace', 'blast_furnace', 'smoker', 'chest', 'barrel', 'anvil'])
     const placeCarried = async (blockName: string): Promise<Position> => {
       const spot = pickTableSpot(this.position as Position, (p) => {
         const block = bot.blockAt(vecAt(p))
         return block
-          ? { air: block.name === 'air' || block.name === 'cave_air', solid: block.boundingBox === 'block' }
+          ? {
+              air: block.name === 'air' || block.name === 'cave_air',
+              solid: block.boundingBox === 'block' && !INTERACTIVE_GROUND.has(block.name),
+            }
           : null
       })
       if (!spot) {
@@ -1053,12 +1061,26 @@ export class BotSession {
       if (!ground) {
         throw craftError('PATH_NOT_FOUND', noPlacementMessage(), true)
       }
-      await bot.placeBlock(ground, ground.position.offset(0, 1, 0).minus(ground.position))
+      try {
+        await bot.placeBlock(ground, ground.position.offset(0, 1, 0).minus(ground.position))
+      } catch (err) {
+        // placeBlock's blockUpdate wait is flaky on Paper, and a stale
+        // client cell can make the reference block a phantom (RB-1 drill:
+        // "blockUpdate did not fire within 5000ms" while the block HAD
+        // placed). Don't trust the throw either way — give the update a
+        // beat, then let the world verdict below decide.
+        this.log.info({ err: err instanceof Error ? err.message : String(err), blockName }, 'placeBlock threw — verifying the world')
+        await new Promise((resolve) => setTimeout(resolve, 1_000))
+      }
       const placed = bot.blockAt(vecAt(spot.spot))
       if (placed?.name !== blockName) {
         // The server can silently reject a placement (the ghost-dig lesson
         // in reverse) — never work against a block that isn't really there.
-        throw new Error(`${blockName} placement did not take (the spot reads ${placed?.name ?? 'unloaded'})`)
+        throw craftError(
+          'PATH_NOT_FOUND',
+          `the ${blockName.replace(/_/g, ' ')} would not set here (the spot reads ${placed?.name ?? 'unloaded'}) — move to open ground and try again`,
+          true,
+        )
       }
       return spot.spot
     }
