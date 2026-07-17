@@ -1,8 +1,44 @@
-# Session Handoff — SURVIVAL LIVE + CPU FOLLOW-UP CLOSED (PR #33 merged; perf PR #34 awaiting Parker's click) · WORLD ON EASY, wheels on · fleet survives autonomously
+# Session Handoff — RB-1 (BODY) COMPLETE ON BRANCH: exit drill PASSED, full T1 ladder in the ledger · next: RB-2 (race)
 
 > A fresh session should be able to continue from this file +
-> `docs/architecture/09-survival-plan.md` (the approved cluster) or
-> `docs/architecture/08-m2-plan.md` (history) without asking questions.
+> `docs/architecture/10-red-vs-blue.md` (the ADR-pinned plan) without
+> asking questions.
+
+## Session 2026-07-17 (fourth) — RB-1, the whole body phase in one autonomous session (branch `rb-1-body`, PR pending)
+
+**Exit criterion met and machine-verified**: `node scripts/drill-rb1.mjs`
+drives Fen mine → smelt → craft iron_pickaxe end-to-end on the live stack;
+the ledger holds the attempt slice (AttemptStarted, FIVE ProgressionMilestones,
+AttemptEnded{won, 57.7s, honest-race zeros}), replayable by attemptId —
+`GET :8081/events?aggregate-type=Attempt&aggregate-id=<id>`. One
+chain-resolution craft crossed furnace_placed + first_ingot + iron_pickaxe
+with causation pointing at the single ActionCompleted{crafted:1, smelted:3}.
+
+In ADR order: **SV-5b gate** (first volume backup executed + verified,
+`docs/runbooks/volume-backup.md`, backups in
+`D:\backups\ai-civilization-engine\2026-07-17\`) → **contract commit**
+(gather += coal/iron_ore · craft += iron_pickaxe · errorCodes +=
+TOOL_TIER_REQUIRED/SMELT_FAILED · AttemptStarted/ProgressionMilestone/
+AttemptEnded · fixtures/gen/FakeProvider rows/timeout rows, craft → 60s
+ceiling) → **body skills** (ore tier gate teaching the pickaxe ladder;
+smelt-inside-craft: find-or-place furnace, fuel ranking coal>planks>logs,
+honest short-yield; auto-equip verified already in skills) → **milestone
+mapper + attempt lifecycle** (producer choke-point observer, per-team
+dedupe, win = craft-completions only, `/internal/attempt` control surface)
+→ **team seed + gov mothball** (villagers.json team fields red/blue,
+VILLAGER_COUNT=6 preset, spawn-teams.mjs, government-service → `gov`
+profile) → **exit drill**.
+
+Drill iterations flushed four real bugs (each cost a run): Paper
+spawn-protection ghost-digs near world spawn (now 0), placeBlock's flaky
+blockUpdate wait (world-verify instead of trusting the throw), interactive
+blocks as placement ground (furnace stacked onto the table opens it
+instead), and rig lessons (thick pad, cleared inventory — scavenged ingots
+once let the pickaxe craft with zero smelts). All in CLAUDE.md gotchas.
+
+**Next session (RB-2)**: tier-checklist prompt + team-progress percepts +
+the enumerated attempt checklist + llama go/no-go smoke + Normal soak.
+The old M2/Survival handoff below is history.
 > **M1 + M2 complete and merged (Mayor Bram seated, fleet ticking). The
 > Survival cluster is in flight: SV-1 (`1915e6d`), SV-2 (`38bc223`) and
 > SV-3 + survival reflexes (PR #33, squash `d9d16bd`) merged. The LIVE

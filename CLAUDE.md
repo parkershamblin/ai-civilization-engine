@@ -1,10 +1,8 @@
 ## HANDOFF (current session)
 
-**Last checkpoint:** RB-0 (docs, this session) — ADR `10-red-vs-blue.md` drafted, CLAUDE.md updated, resume bullets in PR description.
+**Last checkpoint:** RB-1 (body) COMPLETE on branch `rb-1-body` — exit drill PASSED (full T1 ladder in the ledger, attempt won in 57.7s, replayable by attemptId). Stone-tier assumption verified: #33 shipped it. Details: `docs/HANDOFF.md`.
 
-**Next session:** Start with `/goal Land a SWE job (apps out this fall)` and link to the ADR appendix. RB-1 begins with SV-5b backup gate.
-
-**Key assumption to verify at RB-1 kickoff:** stone-tier tools shipped in #33 (SV-3 valve); if not, chain-resolution skill picks up stone as one more link.
+**Next session:** RB-2 (race): tier-checklist prompt + team-progress percepts + enumerated attempt checklist + llama go/no-go smoke + Normal soak. Exit: one unattended llama-driven 3v3 race to T1 with honest ledger evidence. Plan: `docs/architecture/10-red-vs-blue.md`.
 
 # AI Civilization Engine — project guide
 
