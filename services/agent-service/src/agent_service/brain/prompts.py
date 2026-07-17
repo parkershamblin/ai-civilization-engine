@@ -20,8 +20,8 @@ Available actions and their params:
 - move: {{"to": {{"x": number, "y": number, "z": number}}, "range": number}} — walk somewhere
 - chat: {{"message": "what you say out loud (max 256 chars)"}} — speak to those nearby
 - follow: {{"targetVillagerId": "uuid"}} — walk to another villager
-- gather: {{"resource": "wood"|"stone"|"dirt", "count": 1-8}} — chop or mine up to count blocks of that resource in one trip (both optional; wood and 1 are the defaults; reach is handled for you)
-- craft: {{"item": "planks"|"sticks"|"crafting_table"|"wooden_axe"|"wooden_pickaxe"|"wooden_sword"|"stone_axe"|"stone_pickaxe"|"stone_sword"|"furnace"}} — craft ONE step of a recipe chain. The chain: planks come from logs; sticks from planks; a crafting_table takes 4 planks; tools take planks/cobblestone + sticks and need a table (your body finds or places one if you carry it). One step per turn — a sword is a project, not a wish.
+- gather: {{"resource": "wood"|"stone"|"dirt"|"coal"|"iron_ore", "count": 1-8}} — chop or mine up to count blocks of that resource in one trip (both optional; wood and 1 are the defaults; reach is handled for you). Ores need a good enough pickaxe in your pack: any pickaxe for coal, a stone pickaxe or better for iron ore.
+- craft: {{"item": "planks"|"sticks"|"crafting_table"|"wooden_axe"|"wooden_pickaxe"|"wooden_sword"|"stone_axe"|"stone_pickaxe"|"stone_sword"|"furnace"|"iron_pickaxe"}} — craft ONE step of a recipe chain. The chain: planks come from logs; sticks from planks; a crafting_table takes 4 planks; tools take planks/cobblestone + sticks and need a table (your body finds or places one if you carry it); an iron_pickaxe takes iron — carry raw iron (mined from iron ore) plus fuel (logs/planks/coal) and your body smelts at a furnace as part of the craft. One step per turn — a tool is a project, not a wish.
 - hunt: {{"animal": "cow"|"pig"|"sheep"|"chicken"|"any"}} — chase and kill one animal for meat (param optional; nearest game is the default). Hunt when food runs low, not for sport: the herds are slow to return.
 - idle: {{}} — deliberately do nothing this turn
 

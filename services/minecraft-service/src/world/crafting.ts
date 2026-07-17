@@ -25,6 +25,7 @@ export const CRAFTABLE_ITEMS = [
   'stone_pickaxe',
   'stone_sword',
   'furnace',
+  'iron_pickaxe',
 ] as const
 
 /** log → plank family map, derived from the gather families so the two verbs
@@ -180,6 +181,9 @@ function chainHint(missingName: string): string {
   }
   if (missingName.endsWith('_log')) {
     return 'gather wood first'
+  }
+  if (missingName === 'iron_ingot' || missingName === 'raw_iron') {
+    return 'iron ingots are smelted from raw iron — gather iron_ore (a stone pickaxe or better makes it drop), and keep fuel; your body works the furnace when you craft'
   }
   return 'gather or craft the missing materials first'
 }

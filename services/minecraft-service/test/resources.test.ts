@@ -282,7 +282,9 @@ describe('scanNearbyResources (the snapshot survey)', () => {
     const bot = botAt(origin, everywhere)
     const [dirt] = scanNearbyResources(bot, SCAN)!
     expect(dirt).toEqual({ family: 'dirt', nearestDistance: 1, count: 32 })
-    expect(bot.calls).toEqual([64, 64, 64]) // countCap * 2, once per family
+    // countCap * 2, once per family — derived, so growing RESOURCE_BLOCKS
+    // (coal/iron_ore joined in RB-1) doesn't stale this assertion.
+    expect(bot.calls).toEqual(Object.keys(RESOURCE_BLOCKS).map(() => 64))
   })
 })
 

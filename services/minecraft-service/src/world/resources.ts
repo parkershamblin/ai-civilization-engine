@@ -19,6 +19,12 @@ export const RESOURCE_BLOCKS: Record<string, readonly string[]> = {
   ],
   stone: ['stone', 'cobblestone', 'andesite', 'diorite', 'granite'],
   dirt: ['dirt', 'grass_block'],
+  // The T1 mining families (RB-1). Ore blocks only drop to a sufficient
+  // pickaxe tier — planHarvest's canHarvest gate already enforces that (its
+  // 'blocked' arm names the tool), so under-tiered attempts fail with the
+  // tier taught, never a silent zero-yield dig.
+  coal: ['coal_ore', 'deepslate_coal_ore'],
+  iron_ore: ['iron_ore', 'deepslate_iron_ore'],
 } as const
 
 export function blockNamesFor(resource: string): readonly string[] | undefined {
@@ -30,6 +36,8 @@ export const RESOURCE_YIELD: Record<string, readonly string[]> = {
   wood: RESOURCE_BLOCKS.wood as readonly string[],
   stone: ['cobblestone', 'stone'],
   dirt: ['dirt'],
+  coal: ['coal'],
+  iron_ore: ['raw_iron'],
 } as const
 
 /** The slice of prismarine-block the harvest planner reads — structural, so tests fake it. */
