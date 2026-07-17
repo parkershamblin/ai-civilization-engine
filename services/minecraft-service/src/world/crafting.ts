@@ -112,21 +112,50 @@ function knownMaterial(name: string): boolean {
   )
 }
 
+/** Can the villager plausibly produce this missing ingredient from what's
+ *  already in the pack? (dark_oak_planks ← dark_oak_log, stick ← any wood.)
+ *  Steers the tie-break so prose never sends a dark-oak villager hunting
+ *  cherry trees — llama reads failure messages literally. */
+function makeableFrom(missingName: string, carried: readonly CarriedStack[]): boolean {
+  if (carried.some((stack) => stack.name === missingName && stack.count > 0)) {
+    return true
+  }
+  if (missingName.endsWith('_planks')) {
+    const log = missingName.replace(/_planks$/, '_log')
+    return carried.some((stack) => stack.name === log && stack.count > 0)
+  }
+  if (missingName === 'stick') {
+    return carried.some((stack) => (stack.name.endsWith('_planks') || LOG_TO_PLANKS[stack.name]) && stack.count > 0)
+  }
+  return false
+}
+
 /**
  * Choose which recipe variant's ingredient list to teach: fewest missing
  * items first (a half-stocked pack should hear about its actual shortfall,
- * not a from-scratch variant), known progression materials breaking ties.
+ * not a from-scratch variant); ties break toward ingredients the villager
+ * can make from the pack, then toward known progression materials.
  */
-export function cheapestGaps(perRecipe: readonly (readonly IngredientGap[])[]): IngredientGap[] {
+export function cheapestGaps(
+  perRecipe: readonly (readonly IngredientGap[])[],
+  carried: readonly CarriedStack[] = [],
+): IngredientGap[] {
   let best: readonly IngredientGap[] | null = null
   let bestMissing = Infinity
+  let bestAffinity = -1
   let bestKnown = false
   for (const gaps of perRecipe) {
     const missing = gaps.reduce((sum, gap) => sum + Math.max(0, gap.required - gap.have), 0)
+    const affinity = gaps.filter((gap) => gap.have < gap.required && makeableFrom(gap.name, carried)).length
     const known = gaps.every((gap) => knownMaterial(gap.name))
-    if (missing < bestMissing || (missing === bestMissing && known && !bestKnown)) {
+    const wins =
+      missing < bestMissing ||
+      (missing === bestMissing && affinity > bestAffinity) ||
+      (missing === bestMissing && affinity === bestAffinity && known && !bestKnown)
+    if (wins) {
       best = gaps
       bestMissing = missing
+      bestAffinity = affinity
       bestKnown = known
     }
   }

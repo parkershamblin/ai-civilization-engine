@@ -115,6 +115,18 @@ describe('cheapestGaps', () => {
     expect(cheapestGaps([bamboo, planks])).toEqual(planks)
   })
 
+  it('breaks equal-shortfall ties toward the wood the villager can make from carried logs (live wart, 2026-07-17: Maren with 343 dark oak logs was told to find cherry planks)', () => {
+    const cherry: IngredientGap[] = [
+      { name: 'cherry_planks', required: 2, have: 0 },
+      { name: 'stick', required: 1, have: 0 },
+    ]
+    const darkOak: IngredientGap[] = [
+      { name: 'dark_oak_planks', required: 2, have: 0 },
+      { name: 'stick', required: 1, have: 0 },
+    ]
+    expect(cheapestGaps([cherry, darkOak], [{ name: 'dark_oak_log', count: 343 }])).toEqual(darkOak)
+  })
+
   it('an item with no recipes yields no gaps', () => {
     expect(cheapestGaps([])).toEqual([])
   })

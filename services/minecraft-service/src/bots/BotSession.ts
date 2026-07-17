@@ -647,6 +647,7 @@ export class BotSession {
                 have: bot.inventory.count(d.id, null),
               })),
           ),
+          bot.inventory.items().map((stack) => ({ name: stack.name, count: stack.count })),
         )
       },
       findTable: () => {
