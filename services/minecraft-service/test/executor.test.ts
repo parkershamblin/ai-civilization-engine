@@ -29,6 +29,20 @@ function craftResult(itemName = 'oak_planks', crafted = 4) {
   }
 }
 
+/** A completed hunt in the survival-reflexes result shape. */
+function huntResult(target = 'cow', collected = 2) {
+  return {
+    animal: 'any',
+    target,
+    killed: true,
+    collected,
+    drops: (collected > 0 ? { beef: collected } : {}) as Record<string, number>,
+    position: { x: 12, y: 64, z: -3 },
+    chaseSeconds: 6,
+    note: 'raw beef sates hunger, if poorly — your body eats from the pack by itself when hungry',
+  }
+}
+
 function command(action: string, params: Record<string, unknown> = {}, timeoutMs = 5_000): EventEnvelope {
   return {
     eventId: '019f8e2c-0000-7000-8000-00000000c001',
@@ -62,6 +76,7 @@ function harness(overrides: Partial<ExecutorDeps> = {}, sessionOverrides: Partia
     chat: vi.fn(),
     gather: vi.fn(async () => gatherResult()),
     craft: vi.fn(async () => craftResult()),
+    hunt: vi.fn(async () => huntResult()),
     stopMoving: vi.fn(),
     ...sessionOverrides,
   }
@@ -177,6 +192,7 @@ describe('CommandExecutor', () => {
       chat: vi.fn(),
       gather: vi.fn(async () => gatherResult()),
       craft: vi.fn(async () => craftResult()),
+      hunt: vi.fn(async () => huntResult()),
       stopMoving: vi.fn(),
     }
     const mover: SessionActions = {
@@ -187,6 +203,7 @@ describe('CommandExecutor', () => {
       chat: vi.fn(),
       gather: vi.fn(async () => gatherResult()),
       craft: vi.fn(async () => craftResult()),
+      hunt: vi.fn(async () => huntResult()),
       stopMoving: vi.fn(),
     }
     const h = harness({ getSession: (id) => (id === 'bram-id' ? target : mover) })
@@ -240,6 +257,74 @@ describe('CommandExecutor', () => {
     expect(h.outcomes[0]!.extra.errorCode).toBe('RESOURCE_NOT_FOUND')
     expect(h.outcomes[0]!.extra.retryable).toBe(true)
     expect(h.outcomes[0]!.extra.errorMessage).toBe(prescriptive) // the villager reads this verbatim next tick
+  })
+
+  it('hunt passes family + clamped chase budget through and completes with the body result', async () => {
+    const h = harness()
+    await h.executor.execute(command('hunt', { animal: 'cow', maxDistance: 99 }))
+    expect(h.session.hunt).toHaveBeenCalledWith('cow', 48)
+    expect(h.outcomes[0]!.eventType).toBe('ActionCompleted')
+    const result = h.outcomes[0]!.extra.result as { target: string; collected: number }
+    expect(result.target).toBe('cow')
+    expect(result.collected).toBe(2)
+  })
+
+  it('hunt defaults to any animal within 32 blocks (the contract defaults)', async () => {
+    const h = harness()
+    await h.executor.execute(command('hunt'))
+    expect(h.session.hunt).toHaveBeenCalledWith('any', 32)
+  })
+
+  it('an escaped quarry is TARGET_ESCAPED, retryable, with the teaching prose verbatim', async () => {
+    const prose = 'the cow outran your chase after 20s — wounded game keeps its wounds, so hunting it again may finish the job; a sword in hand also ends chases faster'
+    const h = harness(
+      {},
+      {
+        hunt: vi.fn(async () => {
+          const err = new Error(prose) as Error & { code?: string; retryable?: boolean }
+          err.code = 'TARGET_ESCAPED'
+          err.retryable = true
+          throw err
+        }),
+      },
+    )
+    await h.executor.execute(command('hunt', { animal: 'cow' }))
+    expect(h.outcomes[0]!.extra.errorCode).toBe('TARGET_ESCAPED')
+    expect(h.outcomes[0]!.extra.retryable).toBe(true)
+    expect(h.outcomes[0]!.extra.errorMessage).toBe(prose)
+  })
+
+  it('a command during a meal fast-fails BODY_BUSY and never steals the claim (the bounce table)', async () => {
+    const h = harness({}, { busy: 'eat' })
+    await h.executor.execute(command('chat', { message: 'anyone there?' }))
+    expect(h.session.chat).not.toHaveBeenCalled()
+    expect(h.outcomes[0]!.eventType).toBe('ActionFailed')
+    expect(h.outcomes[0]!.extra.errorCode).toBe('BODY_BUSY')
+    expect(h.outcomes[0]!.extra.retryable).toBe(true)
+    expect(h.session.busy).toBe('eat')
+  })
+
+  it('a command during combat fast-fails SELF_DEFENSE_IN_PROGRESS', async () => {
+    const h = harness({}, { busy: 'combat' })
+    await h.executor.execute(command('gather'))
+    expect(h.session.gather).not.toHaveBeenCalled()
+    expect(h.outcomes[0]!.extra.errorCode).toBe('SELF_DEFENSE_IN_PROGRESS')
+    expect(h.outcomes[0]!.extra.retryable).toBe(true)
+    expect(h.session.busy).toBe('combat')
+  })
+
+  it('a timed-out hunt reads as prescriptive prose', async () => {
+    const h = harness(
+      {},
+      { hunt: vi.fn(() => new Promise<never>(() => {})) },
+    )
+    const run = h.executor.execute(command('hunt', {}, 5_000))
+    await vi.advanceTimersByTimeAsync(5_001)
+    await run
+    expect(h.outcomes[0]!.extra.errorCode).toBe('TIMEOUT')
+    const message = h.outcomes[0]!.extra.errorMessage as string
+    expect(message).toContain('maxDistance')
+    expect(message).not.toContain('no outcome within')
   })
 
   it('a command during an escape fast-fails HAZARD_ESCAPE_IN_PROGRESS without touching the bot', async () => {
