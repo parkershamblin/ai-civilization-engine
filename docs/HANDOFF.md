@@ -1,19 +1,97 @@
-# Session Handoff — SV-2 SHIPPED (sustained gather sessions, PR #29) · next code session = SV-3 (craft verb, body) · Episode 2 filming BEFORE any Survival deploy
+# Session Handoff — SV-3 SHIPPED + DEPLOYED (craft verb body, PR #33 awaiting Parker's merge click) · filming gate WAIVED · next code session = SV-4 (crafting brain + per-verb timeout table)
 
 > A fresh session should be able to continue from this file +
 > `docs/architecture/09-survival-plan.md` (the approved cluster) or
 > `docs/architecture/08-m2-plan.md` (history) without asking questions.
 > **M1 + M2 complete and merged (Mayor Bram seated, fleet ticking). The
-> Survival cluster (peaceful→easy: eat/craft/hunt/cook, fight-or-flee, death
-> awareness, staged wheel removal, on-camera ceremony) is APPROVED and in
-> flight: SV-1 (contract commit A) MERGED to main (`1915e6d`); SV-2
-> (sustained gather sessions, body) shipped as PR #29 (awaiting merge);
-> Sprint 9's single body lane continues at SV-3 (craft verb, body) → SV-4
-> (crafting brain + the per-verb timeout table). Nothing Survival has
-> DEPLOYED — the filming constraint gates DEPLOYS, not commits: Episode 2
-> filming must happen BEFORE the first Survival deploy (docs/demo-m2.md;
-> remove the live COMMUNITY_GOAL line + restart agent-service; the filmed
-> election is a re-election unless a nuke precedes it).**
+> Survival cluster is in flight: SV-1 (`1915e6d`) and SV-2 (`38bc223`)
+> merged; SV-3 (craft verb, body) shipped as PR #33 and IS DEPLOYED to the
+> live fleet (branch-built image; rebuild from main post-merge). The
+> Episode 2 filming gate was WAIVED by Parker on 2026-07-17 — Survival
+> deploys no longer wait on filming (recorded in 09-survival-plan rollout
+> §5). Sprint 9's single body lane continues at SV-4 (crafting brain + the
+> per-verb timeout table with TIMEOUT_TABLE_MAX_MS=60s).**
+
+## Session 2026-07-17 — SV-3 shipped + DEPLOYED (craft verb body, PR #33) · filming gate waived · stack recovered
+
+**Parker's brief: "skip episode 2 filming, and begin developing and deploying
+SV-3."** The filming gate is waived (recorded in 09-survival-plan rollout §5);
+this session made the first Survival deploy.
+
+- **What shipped** (`SV-3: craft verb (body)`, branch `claude/sv-3-craft-verb`,
+  commits `d794234` + `2ef058a`, **PR #33 — OPEN, awaiting Parker's merge
+  click** (the session's permission mode blocked `gh pr merge`; CI green,
+  MERGEABLE)), all minecraft-service:
+  - **`world/crafting.ts` (new pure module)** — wood-family resolution
+    (planks → the most-carried log's planks; sticks → stick), the
+    table-acquire decision tree, missing-ingredient prose with recipe-chain
+    hints (`cheapestGaps` picks the recipe variant to teach: fewest missing →
+    pack affinity → known materials), the placement scan (`pickTableSpot`:
+    solid ground + 2 air, never the bot's own cell, ±1 step for hillsides),
+    and `runCraftFlow` — one craft = ONE recipe application (the chain is the
+    mind's multi-tick project, which is the arc's point). Every world touch
+    injected (the SV-2 pattern) — the decision tree is unit-tested botless.
+  - **`BotSession.craft`** = adapter only: recipesFor/recipesAll/craft,
+    findBlock for a standing table (16-block search), placeBlock for a
+    carried one with post-place verification (the ghost-dig lesson in
+    reverse), honest inventory-delta results, Vec3s minted from the entity
+    position (the hazardBot no-new-dep precedent).
+  - **Executor**: craft case passes coded prescriptive failures through
+    verbatim on EXISTING errorCodes (missing ingredients →
+    RESOURCE_NOT_FOUND, no table → TOOL_REQUIRED, no placement ground →
+    PATH_NOT_FOUND retryable, off-enum → INVALID_PARAMS — no contract
+    change needed); craft-specific TIMEOUT prose names the table-walk lever.
+  - **Wedge/zombie safety, zero new machinery**: the busy seam doubles as
+    the cancellation signal — an abandoned flow never crafts or speaks after
+    the watchdog settles (tested, incl. the announce-suppressed-but-honest-
+    result case).
+  - **Contract tripwire (ajv)**: `CRAFTABLE_ITEMS` pinned to the committed
+    CraftParams enum BOTH directions — SV-11's leather-armor contract commit
+    fails loud in this suite until the body handles it.
+  - **Stone tier rode along** (same generic recipe path — the Sprint 10
+    valve wasn't needed). Deploy-safe by construction: nothing advertises
+    craft to the LLM until SV-4.
+  - Tests **134→168** (tripwire, resolution, gap selection, prose, placement
+    scan, decision tree, executor cases), typecheck clean, **all six suites
+    green** (`task test`, jacoco gates passing), CI green on the PR.
+- **Stack recovery first** (machine had restarted ~1h before the session;
+  containers auto-restarted with the engine): 11 containers up BUT the Paper
+  container was GONE entirely and the fleet 0/20 — minds ticking into a dead
+  world, every command an honest BOT_DISCONNECTED. World volume intact.
+  Paper restarted from the MAIN repo (`--profile minecraft up -d --wait`):
+  connection-throttle −1 HELD, difficulty peaceful, canon world loaded.
+- **Deploy** (body-only; agent-service untouched all session — no brain
+  changes in SV-3): minecraft-service rebuilt from the worktree branch and
+  deployed (`up -d --build --no-deps`, the PR #5 worktree-image precedent;
+  **rebuild from main after the merge to restore deployed-provenance=main** —
+  content is identical to the squash). Fleet re-embodied via
+  `spawn-fleet.mjs`, **20/20 in <1 min, twice** (once per image deploy).
+- **LIVE-VERIFIED: the whole Sprint 9 filmable beat ran on Maren** (operator
+  plane, causationId-null dev practice; she carried 343 dark oak logs):
+  planks → **4 dark oak planks** (most-carried-log resolution, ledger
+  `ActionCompleted{crafted:4, itemName:"dark_oak_planks"}`, 8ms) →
+  crafting_table (52ms) → wooden_sword **failed prescriptively as designed**
+  (no planks left: "…you carry no dark oak planks; craft planks from your
+  logs first…") → planks → sticks → **wooden_sword crafted 1,
+  {tableUsed:true, tablePlaced:true}, 1049ms** — she placed her own table
+  and made the village's first wooden sword at it. Table verified standing
+  at (-132, 92, 17) (RCON execute-if-block); **all five announcements landed
+  in world chat and were heard as ChatObserved percepts** ("Set up a
+  crafting table at (-132, 92, 17).", "Crafted a wooden sword!"). MSPT ~7.8
+  avg after; 12 containers healthy; fleet ticking.
+- **Live wart found and fixed same session**: the deliberate sword failure
+  first taught "2 CHERRY planks" — an equal-shortfall recipe-variant tie
+  llama would chase literally. `cheapestGaps` now tie-breaks by pack
+  affinity (ingredient carried, or its log/planks precursor carried);
+  regression test cites the live case (`2ef058a`, redeployed before the
+  sword run above).
+- **NEXT: Parker merges PR #33** (then optionally `up -d --build --no-deps
+  minecraft-service` from main + `spawn-fleet.mjs` for provenance), then
+  **SV-4 — crafting brain**: DELIBERATE_ACTIONS + `_PARAMS_DEF_BY_ACTION`
+  for craft, SYSTEM_TEMPLATE recipe-chain affordance prose, the per-verb
+  timeout table with `TIMEOUT_TABLE_MAX_MS=60_000` (load-bearing, ruling 2),
+  FakeProvider co-update, prompt tests, llama go/no-go smoke ("N real
+  decisions emit valid craft").
 
 ## Session 2026-07-16 — docs-only: README refresh (PR #31 merged)
 
