@@ -68,7 +68,7 @@ describe('deriveMilestones', () => {
   it('crafting a furnace to carry crosses furnace_placed', () => {
     const derived = deriveMilestones(crafted('v', { item: 'furnace', crafted: 1, furnacePlaced: false, furnaceUsed: false }))
     expect(derived.map((m) => m.milestone)).toEqual(['furnace_placed'])
-    expect(derived[0].detail).toBe('crafted a furnace')
+    expect(derived[0]!.detail).toBe('crafted a furnace')
   })
 
   it('reusing a found furnace during a smelt crosses furnace_placed (never a 4/5 win)', () => {
