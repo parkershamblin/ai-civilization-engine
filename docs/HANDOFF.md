@@ -1,4 +1,44 @@
-# Session Handoff — RB-1 (BODY) COMPLETE ON BRANCH: exit drill PASSED, full T1 ladder in the ledger · next: RB-2 (race)
+# Session Handoff — RB-1 COMPLETE + RB-2 MACHINERY BUILT (3 tuning attempts run) + RB-3 scoreboard LIVE · next: RB-2 exit race
+
+## Session 2026-07-17 (fourth, part 2) — RB-2 machinery + three attempts of tuning + the RB-3 scoreboard
+
+**RB-2 built and battle-tested; the unattended won race is still owed.**
+The race brain (tier-checklist prompt + team-progress percepts, the civics
+pattern), the attempt harness (`scripts/race-rb2.mjs` — the ADR's enumerated
+checklist executed AND verified, honest-race deltas read from Prometheus,
+stall watchdog), and the RB-3 dashboard `/race` scoreboard (validated
+palette, live SSE, verified against a running attempt in Chrome) all landed.
+Race preset active in `.env`: VILLAGER_COUNT=6, TICK=20s. Soak numbers at
+race cadence: ~1.7s mean Ollama deliberation, 6 bots, zero tick errors.
+
+**Three attempts, each converting a real defect into a structural fix:**
+1. 107 chats vs 1 gather — the "split the work out loud" line licensed a
+   debate club → RACE DISCIPLINE directive (mix became 39 gather / 0 chat).
+2. Both teams raced on the barren spawn mountain — blind ±N posts → posts
+   auto-locate the nearest FOREST; stationing was silently broken: a
+   mid-pathfind racer keeps its in-flight goal and walks home →
+   spreadplayers + verify + spawnpoint-anchor + kill/respawn state reset;
+   plus the posOf regex bug (`.match(/g)` keeps the trailing 'd' → NaN).
+3. Attempt 3 (verified rig): wood age converted — a wooden pickaxe WAS
+   crafted, coal ore located and targeted 3.4 blocks away — but the
+   conversion broke: **Fen's pickaxe vanished from the pack** (death
+   suspected despite keepInventory; unproven) and gather failures were
+   processed in same-second BURSTS (command-plane backlog — an executor
+   wedge signal at 6-bot race pace). Attempt ended by the 45m stall
+   watchdog, honest deltas recorded.
+
+**Open defects for the RB-2 exit (next session's first hour):**
+- The vanished wooden pickaxe (trace Fen's death/respawn events in the
+  ledger for attempt 019f7106-a09f-7212-a6ee-157fc87d10a4).
+- Same-second command-failure bursts (check consumer lag / event-loop
+  stalls at 6 walkers; scripts/profile/ exists from #34).
+- Consider: longer stall window for the wood age (45m was nearly enough),
+  and per-bot inventory-conditional hint (the tier prose already teaches).
+Then rerun `node scripts/race-rb2.mjs --label rb2-exit-N` — one command.
+
+RB-3 remaining after the race: POV grid (prismarine-viewer, flag off —
+NEVER deploy minecraft-service mid-race), README hero, filming
+(docs/demo-rb.md has the shot script + caption-to-ledger table).
 
 > A fresh session should be able to continue from this file +
 > `docs/architecture/10-red-vs-blue.md` (the ADR-pinned plan) without
