@@ -118,8 +118,14 @@ they need), body-before-mind, all on the PR #33 branch.
   go/no-go on hunt/craft emission still pending organic evidence; hunt's
   ResourceGathered emission is unit-covered but its live ledger proof
   still pending (drill cows kept wandering off / recreates interrupted);
-  SV-5b backup STILL not taken; watch steady-state CPU across the next
-  night with the band + cooldown in place.
+  SV-5b backup STILL not taken. **CPU follow-up (tracked, not urgent)**:
+  minecraft-service settles at ~100% of one core even in daytime with the
+  band + cooldown in (episode behavior fixed: 23 closes, 33:73
+  escaped:cornered vs the original 1:120) — every health signal is green
+  (0 kafka rejoins, ~0 command timeouts, MSPT ~16, 0 deaths), consistent
+  with the 10ms-sliced pathfinder duty cycle staying responsive while
+  saturated; profile before tuning (candidates: PATHFINDER_TICK_TIMEOUT,
+  scan caching, flee-hop cost) rather than guessing further.
 - **NEXT**: watch the first night; Parker merges PR #33 (single click —
   the whole survival arc rides it); then SV-9 (cook), SV-14 (gear/armor),
   SV-15/16 (death awareness) per the plan; stance rider (SV-13 full) when
