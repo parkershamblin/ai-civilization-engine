@@ -79,9 +79,18 @@ they need), body-before-mind, all on the PR #33 branch.
   - **Hunt end-to-end**: drill cow killed in a 2s chase, 3 beef collected,
     honest RESOURCE_NOT_FOUND prose when the earlier herd had wandered
     (fail-fast worked), ResourceGathered emission verified after the fix.
+- **First-night finding, fixed same session (`071e1cf`)**: the flee
+  no-progress window (3s) was TIGHTER than the pathfinder think budget
+  (10s) — the cornered verdict fired before tickTimeout-starved A* even
+  started the body moving, the goal got cleared, and the fleet jittered in
+  place spamming overwhelmed{cornered} (distance also emitted as a
+  hardcoded 0). Widened to 7s + real distance/count in the emit;
+  redeployed mid-night. Zero deaths throughout either way (wheels +
+  10-HP easy floor held). Also of note: a `creaking` (1.21.4 pale-garden
+  mob) hit the unknown-hostile flee-class default correctly.
 - **Watch-fors**: organic hunt/craft decisions need hunger pressure (fleet
-  was 17–20 food at session end — the survival section fires ≤10); the
-  first NIGHT is the real soak (67 cave zombies purged, but spawns
+  was 17–20 food at session end — the survival section fires ≤10); night
+  soak continues (67 cave zombies were purged at dusk, but spawns
   continue); llama go/no-go on hunt/craft emission still pending organic
   evidence; SV-5b backup STILL not taken.
 - **NEXT**: watch the first night; Parker merges PR #33 (single click —
