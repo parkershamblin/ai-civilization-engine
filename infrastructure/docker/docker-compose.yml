@@ -220,6 +220,9 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-auto}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_DAILY_TOKEN_BUDGET: ${LLM_DAILY_TOKEN_BUDGET:-2000000}
+      # Backpressure for the shared LLM backend: excess deliberations queue at
+      # the provider instead of thrashing one GPU with 20 concurrent requests.
+      LLM_MAX_CONCURRENT_REQUESTS: ${LLM_MAX_CONCURRENT_REQUESTS:-4}
       TICK_INTERVAL_SECONDS: ${TICK_INTERVAL_SECONDS:-60}
       VILLAGER_COUNT: ${VILLAGER_COUNT:-1}
       # D2 filming lever (M2-10): one shared-aim line in every system prompt.
