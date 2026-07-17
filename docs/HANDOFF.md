@@ -88,11 +88,25 @@ they need), body-before-mind, all on the PR #33 branch.
   redeployed mid-night. Zero deaths throughout either way (wheels +
   10-HP easy floor held). Also of note: a `creaking` (1.21.4 pale-garden
   mob) hit the unknown-hostile flee-class default correctly.
+- **Second night finding, fixed same session (`06fa495`)**: 20 perpetual
+  concurrent flees at 24-block A* hops pinned the minecraft-service event
+  loop at **99.9% CPU** (caught via docker stats before any cascade — zero
+  kafka rejoins, commands still completing; the recorded pursuit-pinning
+  risk realized through FLEE, which the fight cap can't reach). Fix = the
+  hazard escapeRetryMs pattern applied to maneuvers
+  (`THREAT_MANEUVER_COOLDOWN_MS=5000`, first maneuver immediate, failed
+  ones back off) + flee hops 24→16 (A* cost is super-linear on rough
+  terrain; the loop re-hops anyway). Night-flee outcome ratio pre-fix was
+  120 cornered : 1 escaped per minute — perpetual running that WORKED
+  (fleet health 19×20/20 + one 17 regenerating, ZERO deaths all night),
+  just hot.
 - **Watch-fors**: organic hunt/craft decisions need hunger pressure (fleet
   was 17–20 food at session end — the survival section fires ≤10); night
   soak continues (67 cave zombies were purged at dusk, but spawns
   continue); llama go/no-go on hunt/craft emission still pending organic
-  evidence; SV-5b backup STILL not taken.
+  evidence; hunt's ResourceGathered emission is unit-covered but its live
+  ledger proof still pending (drill cows kept wandering off / recreates
+  interrupted); SV-5b backup STILL not taken.
 - **NEXT**: watch the first night; Parker merges PR #33 (single click —
   the whole survival arc rides it); then SV-9 (cook), SV-14 (gear/armor),
   SV-15/16 (death awareness) per the plan; stance rider (SV-13 full) when
