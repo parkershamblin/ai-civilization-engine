@@ -230,14 +230,30 @@ for (const { teamId, members } of teams) {
   }
   console.log(`  team ${teamId} stationed at x=${x} z=${z} (verified), packs cleared, spawnpoints anchored`)
 }
-// Post-respawn verification: every racer back online AND standing at its post.
+// Post-respawn verification: every racer back online AND standing at its
+// post. At the 10s race tick a brain can fire DURING this wait and walk its
+// bot off the post before we read it (Wren drifted 54 blocks on the first
+// 10s-tick attempt) — a walker is not a stationing failure, so correct with
+// a tp and re-verify instead of aborting the take.
 await sleep(8_000)
 for (const { teamId, members } of teams) {
   const [x, , z] = posts[teamId]
   for (const m of members) {
-    const at = posOf(m.minecraftUsername)
-    if (!at || Math.hypot(at[0] - x, at[2] - z) > 32) {
-      console.error(`  ${m.minecraftUsername} is not at the ${teamId} post after respawn (${at})`)
+    let atPost = false
+    for (let attempt = 0; attempt < 4 && !atPost; attempt++) {
+      const at = posOf(m.minecraftUsername)
+      if (at && Math.hypot(at[0] - x, at[2] - z) <= 32) {
+        atPost = true
+        break
+      }
+      console.log(`  ${m.minecraftUsername} wandered off the ${teamId} post (${at}) — spread back (try ${attempt + 1})`)
+      // spreadplayers, not tp: it finds a legal SURFACE spot at the post —
+      // a raw tp to the wanderer's y-level could bury them in a hillside.
+      rcon(`spreadplayers ${x} ${z} 0 8 false ${m.minecraftUsername}`)
+      await sleep(1_500)
+    }
+    if (!atPost) {
+      console.error(`  ${m.minecraftUsername} cannot be kept at the ${teamId} post`)
       process.exit(3)
     }
   }
