@@ -69,6 +69,7 @@ class TickDeps:
     relationships: Any = None  # RelationshipRepo-shaped: apply_update() (None: feature off, e.g. old tests)
     awareness: Any = None  # ActionAwareness-shaped: recall()/remember() (None: feature off)
     civics: Any = None  # CivicState-shaped: snapshot(villager_id) (None: feature off)
+    race: Any = None  # RaceState-shaped: snapshot(villager_id) (None: feature off) — RB-2
     community_goal: str | None = None  # D2 filming lever: one system-prompt line
     percepts_max: int = 10
     memories_k: int = 6
@@ -131,6 +132,7 @@ def build_tick_graph(deps: TickDeps):
                 feelings,
                 last_decision=deps.awareness.recall(villager.id) if deps.awareness else None,
                 civic=deps.civics.snapshot(str(villager.id)) if deps.civics else None,
+                race=deps.race.snapshot(str(villager.id)) if deps.race else None,
             ),
         )
         return {"outcome": outcome}
