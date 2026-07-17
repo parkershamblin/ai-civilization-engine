@@ -1,4 +1,4 @@
-# Session Handoff — SV-3 SHIPPED + DEPLOYED (craft verb body, PR #33 awaiting Parker's merge click) · filming gate WAIVED · next code session = SV-4 (crafting brain + per-verb timeout table)
+# Session Handoff — SV-3 SHIPPED + DEPLOYED (PR #33 awaiting Parker's merge click) · WORLD ON EASY, wheels on · next code session = SV-4 (crafting brain + per-verb timeout table)
 
 > A fresh session should be able to continue from this file +
 > `docs/architecture/09-survival-plan.md` (the approved cluster) or
@@ -85,13 +85,34 @@ this session made the first Survival deploy.
   affinity (ingredient carried, or its log/planks precursor carried);
   regression test cites the live case (`2ef058a`, redeployed before the
   sword run above).
+- **DIFFICULTY ERA FLIP (same session, Parker's call: "flip difficulty to
+  easy and deploy")** — the world is now on **EASY with the training wheels
+  ON**, via the plan's closed-loop procedure: gamerules first
+  (keepInventory→true, doInsomnia→false, mobGriefing→false), RCON
+  `difficulty easy`, `save-all flush`, **deliberate Paper restart, then all
+  four RCON-verified on the rebooted world** (level.dat persistence proven,
+  not assumed). Fleet auto-reconnected after the restart. compose
+  `DIFFICULTY: easy` now seeds future worlds (comment carries the post-nuke
+  re-apply warning — a nuked world boots easy with DEFAULT gamerules).
+  **Known exposure, accepted with the call**: no eat reflex until SV-6 —
+  food drains and pins (easy starvation floors at 10 HP; no starvation
+  deaths, but regen stops below 18 food); no threat
+  perception/combat/flee until Sprint 11 — night mobs WILL kill villagers;
+  deaths are material-lossless (keepInventory) and bodies auto-respawn, but
+  minds cannot perceive death until SV-15/16 lands (ghost deaths, no
+  memories formed). **No stack-down volume backup was taken (SV-5b's gate)**
+  — run it before leaving the stack unattended for long, and REQUIRED before
+  the Sprint 12 ceremony. The ceremony still removes the wheels on camera —
+  never flip keepInventory off as a session side effect.
 - **NEXT: Parker merges PR #33** (then optionally `up -d --build --no-deps
   minecraft-service` from main + `spawn-fleet.mjs` for provenance), then
   **SV-4 — crafting brain**: DELIBERATE_ACTIONS + `_PARAMS_DEF_BY_ACTION`
   for craft, SYSTEM_TEMPLATE recipe-chain affordance prose, the per-verb
   timeout table with `TIMEOUT_TABLE_MAX_MS=60_000` (load-bearing, ruling 2),
   FakeProvider co-update, prompt tests, llama go/no-go smoke ("N real
-  decisions emit valid craft").
+  decisions emit valid craft"). Strong candidates to pull forward given the
+  easy era: SV-5b (backup + runbooks) and SV-6/SV-7 (eat reflex + hunger
+  brain) — the fleet is hungry NOW.
 
 ## Session 2026-07-16 — docs-only: README refresh (PR #31 merged)
 
