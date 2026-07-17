@@ -37,8 +37,18 @@ race cadence: ~1.7s mean Ollama deliberation, 6 bots, zero tick errors.
   section (`_race_tool_check`, prompts.py) — fires on the mining rungs when
   the pack holds no pickaxe, teaches shortest re-craft path; silent at
   smelt/win rungs. Tests in test_race_brain.py.
-- Same-second command-failure bursts (check consumer lag / event-loop
-  stalls at 6 walkers; scripts/profile/ exists from #34).
+- ~~Same-second command-failure bursts~~ **SOLVED (2026-07-17): the kafkajs
+  fetch-cycle barrier.** `partitionsConsumedConcurrently: 6` parallelizes
+  within a fetch round, but the next fetch waits for the slowest in-flight
+  eachMessage — and the executor awaited the world inside the handler, so one
+  60s-watchdog pathfind gated all six bots (measured 40–116s request→outcome
+  lag; failures drained in same-second multi-bot bursts, 50 such seconds in
+  attempt 3). Fix: `CommandExecutor.dispatch` per-villager lanes — the
+  consumer enqueues and acks, never awaits; per-villager ordering preserved;
+  age guard now runs at dequeue so lane wait counts against
+  COMMAND_MAX_AGE_SECONDS; new gauge `civ_command_lane_depth` (idles 0,
+  sustained >6 at race pace = world behind the brains). Crash loses queued
+  intents by design (brains reissue; dead intents must never replay).
 - Consider: longer stall window for the wood age (45m was nearly enough) —
   the inventory-conditional hint is now in (see above).
 Then rerun `node scripts/race-rb2.mjs --label rb2-exit-N` — one command.
