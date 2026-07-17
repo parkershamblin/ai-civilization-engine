@@ -28,12 +28,19 @@ race cadence: ~1.7s mean Ollama deliberation, 6 bots, zero tick errors.
    watchdog, honest deltas recorded.
 
 **Open defects for the RB-2 exit (next session's first hour):**
-- The vanished wooden pickaxe (trace Fen's death/respawn events in the
-  ledger for attempt 019f7106-a09f-7212-a6ee-157fc87d10a4).
+- ~~The vanished wooden pickaxe~~ **SOLVED (2026-07-17): durability break,
+  not death.** Ledger shows continuous movement through the 18:03:36→18:04:14
+  vanish window (no respawn teleport, no threats); Paper ground-truth stats
+  show `broken:wooden_pickaxe=2` for Fen. 59-use wooden pickaxe burned by 16
+  evented digs + unevented pathfinder tunnel digs (action Movements has
+  canDig on). Fix shipped: material-aware TOOL CHECK line in the race
+  section (`_race_tool_check`, prompts.py) — fires on the mining rungs when
+  the pack holds no pickaxe, teaches shortest re-craft path; silent at
+  smelt/win rungs. Tests in test_race_brain.py.
 - Same-second command-failure bursts (check consumer lag / event-loop
   stalls at 6 walkers; scripts/profile/ exists from #34).
-- Consider: longer stall window for the wood age (45m was nearly enough),
-  and per-bot inventory-conditional hint (the tier prose already teaches).
+- Consider: longer stall window for the wood age (45m was nearly enough) —
+  the inventory-conditional hint is now in (see above).
 Then rerun `node scripts/race-rb2.mjs --label rb2-exit-N` — one command.
 
 RB-3 remaining after the race: POV grid (prismarine-viewer, flag off —
