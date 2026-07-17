@@ -294,7 +294,7 @@ console.log('zero human intervention from here — watching the ledger.')
 
 const startedAt = Date.now()
 let lastMilestoneAt = Date.now()
-let seenCount = 0
+const seenMilestones = new Set()
 let outcome = null
 
 while (true) {
@@ -304,13 +304,17 @@ while (true) {
   if (tripped > 0) {
     budgetTrippedSeen = 1
   }
+  // status.milestones is a SORTED set, not an append-log — a slice(seenCount)
+  // tail re-prints old rungs and swallows new ones that sort into the middle
+  // (attempt 6 printed red:first_coal twice and blue:first_iron_ore never).
+  // Diff against a seen-set instead.
   const milestones = status.milestones ?? []
-  if (milestones.length > seenCount) {
-    for (const m of milestones.slice(seenCount)) {
+  for (const m of milestones) {
+    if (!seenMilestones.has(m)) {
+      seenMilestones.add(m)
       console.log(`  [${Math.round((Date.now() - startedAt) / 60000)}m] milestone: ${m}`)
+      lastMilestoneAt = Date.now()
     }
-    seenCount = milestones.length
-    lastMilestoneAt = Date.now()
   }
   if (status.win) {
     outcome = 'won'
