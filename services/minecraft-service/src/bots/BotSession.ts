@@ -498,9 +498,24 @@ export class BotSession {
     this.threatTimer = setInterval(() => this.threatWatcher?.check(), config.THREAT_WATCH_INTERVAL_MS)
   }
 
-  /** One filter over the client's entity map: every tracked hostile with its
-   *  live distance, nearest first. */
+  /** How far above/below a hostile still counts as a threat. The alert
+   *  radius is a 3D sphere with no line-of-sight check, and the village
+   *  sits over inhabited caves — without the band, every surface villager
+   *  lives in a PERMANENT phantom episode against mobs 12 blocks below
+   *  solid rock (measured 2026-07-17: the whole fleet perpetually fleeing
+   *  ghosts, event loop pinned; the resource scan's yBand precedent).
+   *  Damage promotion (threat.ts) is the safety net for what the band
+   *  hides — a cliff skeleton that actually lands a hit still opens an
+   *  episode. */
+  private static readonly HOSTILE_Y_BAND = 8
+
+  /** One filter over the client's entity map: every tracked hostile within
+   *  the vertical band, with its live distance, nearest first. */
   private trackedHostiles(): TrackedHostile[] {
+    return this.scanHostiles(BotSession.HOSTILE_Y_BAND)
+  }
+
+  private scanHostiles(yBand: number | null): TrackedHostile[] {
     const bot = this.bot
     const origin = this.position
     if (!bot?.entity || !origin) {
@@ -509,6 +524,9 @@ export class BotSession {
     const out: TrackedHostile[] = []
     for (const entity of Object.values(bot.entities)) {
       if (entity === bot.entity || entity.kind !== 'Hostile mobs' || !entity.position) {
+        continue
+      }
+      if (yBand !== null && Math.abs(entity.position.y - origin.y) > yBand) {
         continue
       }
       out.push({
@@ -584,6 +602,7 @@ export class BotSession {
       health: () => bot.health,
       position: () => this.position,
       hostiles: () => this.trackedHostiles(),
+      allHostiles: () => this.scanHostiles(null),
       armed: () => bot.inventory.items().some((item) => item.name.endsWith('_sword') || item.name.endsWith('_axe')),
     }
   }

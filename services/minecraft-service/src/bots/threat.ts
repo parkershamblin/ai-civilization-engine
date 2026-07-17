@@ -112,8 +112,11 @@ export interface ThreatBot {
   alive: boolean
   health(): number
   position(): Position | null
-  /** hostiles the client currently tracks (kind === 'Hostile mobs'), any range */
+  /** hostiles the client tracks within the vertical threat band */
   hostiles(): TrackedHostile[]
+  /** every tracked hostile, band ignored — the damage-promotion fallback
+   *  (a cliff sniper the band hides must still be nameable when it hits) */
+  allHostiles(): TrackedHostile[]
   /** carries any sword or axe */
   armed(): boolean
 }
@@ -190,6 +193,7 @@ export class ThreatWatcher {
   private pendingHits = 0
   private episode: Episode | null = null
   private maneuverInFlight = false
+  private lastHealth: number | null = null
   /** last pass's view, cached for the snapshot's nearbyHostiles — zero extra scanning */
   private lastSeen: Array<{ type: string; count: number; nearestDistance: number }> = []
 
@@ -210,6 +214,7 @@ export class ThreatWatcher {
       if (!bot?.alive) {
         this.pendingHits = 0
         this.lastSeen = []
+        this.lastHealth = null
         return
       }
       if (this.episode && this.deps.generation() !== this.episode.generation) {
@@ -217,7 +222,12 @@ export class ThreatWatcher {
         // lying "escaped" would poison the ledger. Drop silently.
         this.episode = null
         this.maneuverInFlight = false
+        this.lastHealth = null
       }
+      const health = bot.health()
+      // ignore regen upticks and float noise — only a real hit promotes
+      const tookDamage = this.lastHealth !== null && health < this.lastHealth - 0.4
+      this.lastHealth = health
       const inAlert = bot
         .hostiles()
         .filter((h) => h.distance <= this.deps.config.alertRadius + (this.episode ? CLOSE_HYSTERESIS : 0))
@@ -225,6 +235,17 @@ export class ThreatWatcher {
       this.cacheSeen(inAlert)
 
       if (!this.episode) {
+        if (tookDamage) {
+          // Damage promotion: something the band/classification hid landed a
+          // hit — open immediately against the best-named suspect. The one
+          // damage-triggered path in the design (covers aggroed endermen,
+          // cliff snipers, anything unmapped).
+          const suspect = inAlert[0] ?? bot.allHostiles()[0]
+          if (suspect) {
+            this.openEpisode(bot, suspect, Math.max(1, inAlert.length))
+            return
+          }
+        }
         if (inAlert.length === 0) {
           this.pendingHits = 0
           return

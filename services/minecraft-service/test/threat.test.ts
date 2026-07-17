@@ -91,6 +91,8 @@ interface Emitted {
 interface Harness {
   watcher: ThreatWatcher
   hostiles: TrackedHostile[]
+  farHostiles: TrackedHostile[]
+  health: { value: number }
   emitted: Emitted[]
   cries: string[]
   busy: { value: 'action' | 'escape' | 'combat' | 'eat' | null }
@@ -116,11 +118,14 @@ function harness(over: {
   const generation = { value: 1 }
   const episodes: string[] = []
   const responses: Array<{ response: string; outcome: string }> = []
+  const health = { value: over.health ?? 20 }
+  const farHostiles: TrackedHostile[] = []
   const bot: ThreatBot = {
     alive: true,
-    health: () => over.health ?? 20,
+    health: () => health.value,
     position: () => ({ x: 0, y: 64, z: 0 }),
     hostiles: () => hostiles,
+    allHostiles: () => [...hostiles, ...farHostiles],
     armed: () => over.armed ?? true,
   }
   const fight = vi.fn(async (_targetId: number, _ctx: { abandoned: boolean }) => over.fightOutcome ?? ('killed' as const))
@@ -147,7 +152,7 @@ function harness(over: {
     // explicitly; the cooldown has its own test below
     config: { alertRadius: 24, maneuverCooldownMs: over.maneuverCooldownMs ?? 0 },
   }
-  return { watcher: new ThreatWatcher(deps), hostiles, emitted, cries, busy, generation, episodes, responses, fight, flee }
+  return { watcher: new ThreatWatcher(deps), hostiles, farHostiles, health, emitted, cries, busy, generation, episodes, responses, fight, flee }
 }
 
 async function pass(h: Harness): Promise<void> {
@@ -243,6 +248,25 @@ describe('ThreatWatcher episodes', () => {
     expect(h.watcher.episodeOpen).toBe(false)
     expect(h.emitted.at(-1)).toMatchObject({ phase: 'escaped' })
     expect(h.episodes).toEqual(['escaped'])
+  })
+
+  it('taking damage promotes instantly — even when the vertical band hides the shooter', async () => {
+    const h = harness()
+    h.farHostiles.push(zombie({ id: 44, name: 'skeleton', distance: 14 })) // a cliff sniper, outside the band
+    await pass(h) // baseline health recorded, nothing in the banded view
+    expect(h.watcher.episodeOpen).toBe(false)
+    h.health.value = 16 // an arrow lands
+    await pass(h)
+    expect(h.watcher.episodeOpen).toBe(true)
+    expect(h.emitted[0]).toMatchObject({ phase: 'spotted', threatType: 'skeleton' })
+  })
+
+  it('regen upticks never promote', async () => {
+    const h = harness({ health: 16 })
+    await pass(h)
+    h.health.value = 17 // healing
+    await pass(h)
+    expect(h.watcher.episodeOpen).toBe(false)
   })
 
   it('a failed maneuver waits out the cooldown before the next attempt (event-loop economy)', async () => {
