@@ -7,6 +7,7 @@
 //   node scripts/race-rb2.mjs [--label take-1] [--difficulty easy|normal]
 //     [--red x,y,z] [--blue x,y,z] [--separation 300] [--stall-minutes 75]
 //     [--practice]   (practice: skip the hard budget/tick preset checks)
+//     [--mobs]       (restore hostile spawns — default is a mob-free race)
 //
 // Team posts default to world spawn ± separation/2 on the x axis. Exit code:
 // 0 won · 2 stalled · 3 aborted/failed preflight.
@@ -104,6 +105,24 @@ rcon('gamerule mobGriefing false') // protects placed furnaces from creepers
 check(rcon('gamerule keepInventory').includes('true'), 'keepInventory true (lossless respawn)')
 check(rcon('gamerule doInsomnia').includes('false'), 'doInsomnia false (no phantom swarms)')
 check(rcon('gamerule mobGriefing').includes('false'), 'mobGriefing false (furnaces survive creepers)')
+
+// Hostiles: OFF by default. Attempt-4 measured the threat tax: 254 commands
+// failed SELF_DEFENSE_IN_PROGRESS in 32 minutes — the fleet spent more wall
+// time fleeing than mining. A race measures the resource ladder, not mob
+// dodging; pass --mobs to restore hostiles for the flagship's realism.
+if (has('mobs')) {
+  rcon('gamerule doMobSpawning true')
+  check(rcon('gamerule doMobSpawning').includes('true'), 'doMobSpawning true (--mobs: flagship realism)')
+} else {
+  rcon('gamerule doMobSpawning false')
+  for (const type of [
+    'zombie', 'skeleton', 'creeper', 'spider', 'cave_spider', 'witch', 'drowned', 'enderman',
+    'phantom', 'pillager', 'zombie_villager', 'creaking', 'slime', 'husk', 'stray', 'bogged',
+  ]) {
+    rcon(`kill @e[type=${type}]`)
+  }
+  check(rcon('gamerule doMobSpawning').includes('false'), 'doMobSpawning false (mob-free race — --mobs restores them)')
+}
 
 // Difficulty: set → save-all → verify (the in-memory-until-save trap).
 rcon(`difficulty ${wantDifficulty}`)
