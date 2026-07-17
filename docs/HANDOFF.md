@@ -100,13 +100,26 @@ they need), body-before-mind, all on the PR #33 branch.
   120 cornered : 1 escaped per minute — perpetual running that WORKED
   (fleet health 19×20/20 + one 17 regenerating, ZERO deaths all night),
   just hot.
+- **Third finding — the ROOT cause, fixed same session (`e15b13b`)**: dawn
+  CPU stayed pinned because the alert radius is a 3D sphere with NO
+  line-of-sight — **the inhabited caves under the village kept every
+  surface villager in a permanent phantom episode** against mobs 12 blocks
+  below solid rock (this, not night sieges, drove both the CPU burn and
+  the inverted cornered:escaped ratio). Fix at the single source:
+  `trackedHostiles` applies an 8-block vertical band (the resource-scan
+  yBand precedent) — watcher, maneuvers, and the snapshot's nearbyHostiles
+  all stop seeing ghosts; **damage promotion** is the safety net (a real
+  hit opens an episode instantly against the best-named suspect from the
+  unbanded view — cliff snipers, aggroed endermen, anything unmapped;
+  regen never promotes). Tests 247. The fleet survived the WHOLE first
+  night either way: **zero deaths across every sample.**
 - **Watch-fors**: organic hunt/craft decisions need hunger pressure (fleet
-  was 17–20 food at session end — the survival section fires ≤10); night
-  soak continues (67 cave zombies were purged at dusk, but spawns
-  continue); llama go/no-go on hunt/craft emission still pending organic
-  evidence; hunt's ResourceGathered emission is unit-covered but its live
-  ledger proof still pending (drill cows kept wandering off / recreates
-  interrupted); SV-5b backup STILL not taken.
+  was 17–20 food at session end — the survival section fires ≤10); llama
+  go/no-go on hunt/craft emission still pending organic evidence; hunt's
+  ResourceGathered emission is unit-covered but its live ledger proof
+  still pending (drill cows kept wandering off / recreates interrupted);
+  SV-5b backup STILL not taken; watch steady-state CPU across the next
+  night with the band + cooldown in place.
 - **NEXT**: watch the first night; Parker merges PR #33 (single click —
   the whole survival arc rides it); then SV-9 (cook), SV-14 (gear/armor),
   SV-15/16 (death awareness) per the plan; stance rider (SV-13 full) when
