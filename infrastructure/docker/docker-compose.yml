@@ -136,6 +136,11 @@ services:
       RCON_HOST: ${RCON_HOST:-minecraft}
       RCON_PORT: ${RCON_PORT:-25575}
       RCON_PASSWORD: ${RCON_PASSWORD:-civ_rcon}
+      # Survival reflexes (eat/threat/hunt) run on code defaults (config.ts);
+      # only the staged-rollout levers are exposed: fight cap 0 = flee-only
+      # fleet, stance brave = armed villagers stand their ground vs melee.
+      THREAT_MAX_CONCURRENT_FIGHTS: ${THREAT_MAX_CONCURRENT_FIGHTS:-4}
+      THREAT_DEFAULT_STANCE: ${THREAT_DEFAULT_STANCE:-cautious}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
