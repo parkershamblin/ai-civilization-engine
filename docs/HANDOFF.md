@@ -1,4 +1,4 @@
-# Session Handoff — SV-3 SHIPPED + DEPLOYED (PR #33 awaiting Parker's merge click) · WORLD ON EASY, wheels on · next code session = SV-4 (crafting brain + per-verb timeout table)
+# Session Handoff — SURVIVAL REFLEXES LIVE (eat/threat/hunt + craft, PR #33 awaiting Parker's merge click) · WORLD ON EASY, wheels on · fleet survives autonomously
 
 > A fresh session should be able to continue from this file +
 > `docs/architecture/09-survival-plan.md` (the approved cluster) or
@@ -11,6 +11,83 @@
 > deploys no longer wait on filming (recorded in 09-survival-plan rollout
 > §5). Sprint 9's single body lane continues at SV-4 (crafting brain + the
 > per-verb timeout table with TIMEOUT_TABLE_MAX_MS=60s).**
+
+## Session 2026-07-17 (later) — SURVIVAL REFLEXES: eat + threat + hunt shipped and DEPLOYED (rides PR #33)
+
+**Parker's brief: "Update the AI bots so they are able to survive on
+difficulty easy on their own. The goal is that the AI bots are not slain,
+and do not starve to death."** Shipped the survival capability cluster in
+one arc (SV-4 + SV-6/7 + SV-8/10 + SV-12a/b + SV-13-lite + the contracts
+they need), body-before-mind, all on the PR #33 branch.
+
+- **Contracts (additive)**: ThreatEncountered.v1 (edge-triggered episodes,
+  victim-only); ActionRequested += `hunt` (+ flat HuntParams — one animal
+  per action); ActionFailed errorCodes += BODY_BUSY /
+  SELF_DEFENSE_IN_PROGRESS / TARGET_ESCAPED; WorldSnapshot += nearbyAnimals
+  + nearbyHostiles; HazardEncountered description records the starvation
+  reuse. Fixtures + invalid + catalog rows + `task gen` committed.
+- **Body (minecraft-service)**: `bots/eat.ts` (SV-6 brief verbatim: tiers
+  14/6/10 + hurt modifier, foodPoints ranking, banned/desperation foods,
+  per-item 60s blacklist, raced consume, starvation crisis via
+  HazardEncountered{starvation}, generation-bump honesty);
+  `bots/threat.ts` (classification + pure decision table — flee is every
+  default, cautious flees melee; 2-pass debounce + instant danger radii
+  {creeper 12, skeleton 16}; edge-triggered emission, overwhelmed ≤1/60s;
+  canned cries); `bots/combat.ts` (hand-rolled FightDriver per the NO-GO
+  spike: 650ms full-charge swings, fire-and-forget goals ONLY; flee with
+  ±90° deflection + 60° buddy-bias cone + starving-walks + cornered flail;
+  FLEET-wide FightSlots cap, overflow downgrades to flee);
+  `world/hunting.ts` + BotSession.hunt (kill loop, baby exclusion via
+  metadata index 16, entity blacklist, leash, honest yield deltas,
+  ResourceGathered per drop type — ruling 6, wired after the live verify
+  caught the miss); executor BUSY_BOUNCE table; busy seam grows
+  'combat'|'eat' (priority escape > combat > eat > commands, no
+  preemption); snapshot senses; metrics civ_eat_reflex_total /
+  civ_threat_{episodes,responses,fights_active} / civ_hunts_total.
+  mc tests 168→244.
+- **Brain (agent-service)**: DELIBERATE_ACTIONS += craft, hunt (validated
+  against the real $defs); **the per-verb timeout table** (SV-4,
+  TIMEOUT_TABLE_MAX_MS=60s ceiling, gather 60s — count is now advertised);
+  craft/hunt affordances with recipe-chain + herds-are-slow norms; the
+  "your body looks after itself" teaching; standing hunger section (≤10
+  urgent, ≤6 STARVING + ask-for-help legitimizer); Game-in-sight +
+  DANGERS-in-sight sections; ThreatEncountered percept lines per phase;
+  **the SV-7 type-blind hazard-directive FIX** (starvation no longer told
+  to "get off the deep snow"); percepts: ThreatEncountered victim-only,
+  wakes on spotted+overwhelmed only; reflect folds for threats +
+  starvation. agent tests 143→167. All six suites green; zero malformed in
+  the live window post-deploy.
+- **Ops levers** (compose pass-throughs): THREAT_MAX_CONCURRENT_FIGHTS
+  (default 4; 0 = flee-only fleet) and THREAT_DEFAULT_STANCE (cautious;
+  brave = armed villagers fight melee). Everything else runs code defaults.
+- **LIVE-VERIFIED on the easy world, same hour**:
+  - **Organic creeper episode 60s after deploy** (before any drill):
+    spotted 4.9 blocks → engaged{flee} → overwhelmed (cornered on the
+    mountainside) → **escaped after ~47s, zero deaths** — the reflex saved
+    a villager from a live creeper on its first outing.
+  - **Ansel's starvation arc, organic-then-assisted**: his crisis opened
+    HONESTLY (food 0, empty pantry — trapped in the ledger) the moment the
+    watcher booted; an operator /give played the sharing neighbor; the
+    reflex ate 0→8→16→20 (hurt-modifier top-up), crisis
+    escaped-at-hysteresis in the ledger, health regenerating. Plus 4 fully
+    organic eats fleet-wide in the first minutes.
+  - **Drill zombie** (helmeted, daylight): 8+ villagers spotted it,
+    engaged{flee} across the board (cautious default), all episodes closed
+    escaped. Cleanup `kill @e[type=zombie]` removed **67 cave zombies** —
+    the underground had been breeding since the easy flip; expect busy
+    nights.
+  - **Hunt end-to-end**: drill cow killed in a 2s chase, 3 beef collected,
+    honest RESOURCE_NOT_FOUND prose when the earlier herd had wandered
+    (fail-fast worked), ResourceGathered emission verified after the fix.
+- **Watch-fors**: organic hunt/craft decisions need hunger pressure (fleet
+  was 17–20 food at session end — the survival section fires ≤10); the
+  first NIGHT is the real soak (67 cave zombies purged, but spawns
+  continue); llama go/no-go on hunt/craft emission still pending organic
+  evidence; SV-5b backup STILL not taken.
+- **NEXT**: watch the first night; Parker merges PR #33 (single click —
+  the whole survival arc rides it); then SV-9 (cook), SV-14 (gear/armor),
+  SV-15/16 (death awareness) per the plan; stance rider (SV-13 full) when
+  personality-driven bravery is wanted.
 
 ## Session 2026-07-17 — SV-3 shipped + DEPLOYED (craft verb body, PR #33) · filming gate waived · stack recovered
 
