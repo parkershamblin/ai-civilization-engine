@@ -32,6 +32,15 @@ import {
   targetKey,
 } from '../world/resources.ts'
 import { type GatherSessionResult, runGatherSession } from '../world/gatherSession.ts'
+import {
+  CRAFT_TABLE_SEARCH_DISTANCE,
+  type CraftResult,
+  cheapestGaps,
+  craftError,
+  noPlacementMessage,
+  pickTableSpot,
+  runCraftFlow,
+} from '../world/crafting.ts'
 import { type Position, distance, round1 } from '../world/position.ts'
 
 /** What a gather command reports back to the mind: the session totals plus
@@ -591,6 +600,122 @@ export class BotSession {
       this.gatherBlacklist.delete(targetKey(target))
     }
     return { blockType, position: { x: block.position.x, y: block.position.y, z: block.position.z }, collected }
+  }
+
+  /**
+   * Craft one recipe application of a contract item (SV-3) — resolve the
+   * wood-abstract families against the pack, acquire a crafting table when
+   * the recipe needs the 3x3 grid (walk to a standing one, else place a
+   * carried one), craft, and report the honest inventory delta. All control
+   * flow lives in runCraftFlow (unit-tested botless); this method is only
+   * the world touches.
+   */
+  async craft(item: string): Promise<CraftResult> {
+    const bot = this.bot
+    if (!bot?.entity) {
+      throw new Error('bot has no entity — not spawned')
+    }
+    const itemId = (name: string) => bot.registry.itemsByName[name]?.id
+    // blockAt/placeBlock need real Vec3s (prismarine calls their methods) —
+    // mint them from the entity's own position rather than importing an
+    // undeclared transitive package (the hazardBot precedent).
+    const vecAt = (p: Position) => {
+      const base = bot.entity.position.floored()
+      return base.offset(p.x - base.x, p.y - base.y, p.z - base.z)
+    }
+    return await runCraftFlow(item, {
+      carried: () => bot.inventory.items().map((stack) => ({ name: stack.name, count: stack.count })),
+      craftableNow: (name, allowTable) => {
+        const id = itemId(name)
+        // recipesFor reads the table param only as availability at filter
+        // time (mineflayer craft.js) — `true` answers the hypothetical
+        // "standing at a table, could I?" honestly, no Block needed.
+        return id !== undefined && bot.recipesFor(id, null, 1, allowTable).length > 0
+      },
+      ingredientGaps: (name) => {
+        const id = itemId(name)
+        if (id === undefined) {
+          return []
+        }
+        return cheapestGaps(
+          bot.recipesAll(id, null, true).map((recipe) =>
+            recipe.delta
+              .filter((d) => d.count < 0)
+              .map((d) => ({
+                name: bot.registry.items[d.id]?.name ?? `item ${d.id}`,
+                required: -d.count,
+                have: bot.inventory.count(d.id, null),
+              })),
+          ),
+        )
+      },
+      findTable: () => {
+        const found = bot.findBlock({
+          matching: (candidate) => candidate.name === 'crafting_table',
+          maxDistance: CRAFT_TABLE_SEARCH_DISTANCE,
+        })
+        return found ? { x: found.position.x, y: found.position.y, z: found.position.z } : null
+      },
+      walkTo: async (p) => {
+        // Range 2 keeps the table within interaction reach for bot.craft's
+        // activateBlock; the executor's watchdog owns the deadline.
+        await bot.pathfinder.goto(new goals.GoalNear(p.x, p.y, p.z, 2))
+      },
+      placeTable: async () => {
+        const spot = pickTableSpot(this.position as Position, (p) => {
+          const block = bot.blockAt(vecAt(p))
+          return block
+            ? { air: block.name === 'air' || block.name === 'cave_air', solid: block.boundingBox === 'block' }
+            : null
+        })
+        if (!spot) {
+          throw craftError('PATH_NOT_FOUND', noPlacementMessage(), true)
+        }
+        const tableStack = bot.inventory.items().find((stack) => stack.name === 'crafting_table')
+        if (!tableStack) {
+          throw new Error('crafting table vanished from the pack before placement')
+        }
+        await bot.equip(tableStack, 'hand')
+        const ground = bot.blockAt(vecAt(spot.ground))
+        if (!ground) {
+          throw craftError('PATH_NOT_FOUND', noPlacementMessage(), true)
+        }
+        await bot.placeBlock(ground, ground.position.offset(0, 1, 0).minus(ground.position))
+        const placed = bot.blockAt(vecAt(spot.spot))
+        if (placed?.name !== 'crafting_table') {
+          // The server can silently reject a placement (the ghost-dig lesson
+          // in reverse) — never craft against a table that isn't really there.
+          throw new Error(`table placement did not take (the spot reads ${placed?.name ?? 'unloaded'})`)
+        }
+        return spot.spot
+      },
+      craft: async (name, tableAt) => {
+        const id = itemId(name)
+        if (id === undefined) {
+          throw new Error(`unknown item '${name}' in this world's registry`)
+        }
+        const tableBlock = tableAt ? bot.blockAt(vecAt(tableAt)) : null
+        if (tableAt && !tableBlock) {
+          throw new Error('the crafting table is out of loaded range')
+        }
+        const recipes = bot.recipesFor(id, null, 1, tableBlock ?? false)
+        if (recipes.length === 0) {
+          throw new Error(`the ${name} recipe stopped matching your pack mid-craft`)
+        }
+        await bot.craft(recipes[0]!, 1, tableBlock ?? undefined)
+      },
+      countItem: (name) =>
+        bot.inventory
+          .items()
+          .filter((stack) => stack.name === name)
+          .reduce((sum, stack) => sum + stack.count, 0),
+      // The executor claims busy='action' for the command's lifetime and
+      // clears it when the watchdog abandons the race — the same seam SV-2's
+      // gather session reads, no new machinery.
+      bodyStillOurs: () => this.busy === 'action',
+      announce: (line) => bot.chat(line),
+      position: () => this.position as Position,
+    })
   }
 
   stopMoving(): void {

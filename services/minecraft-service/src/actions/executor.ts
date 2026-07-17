@@ -2,6 +2,7 @@ import type { EventEnvelope, ActionRequestedPayload } from '@civ/events/ts'
 import type { Position } from '../world/position.ts'
 import type { BusyState } from '../bots/hazard.ts'
 import type { GatherResult } from '../bots/BotSession.ts'
+import type { CraftResult } from '../world/crafting.ts'
 import { logger } from '../logging.ts'
 import { commandsProcessed } from '../metrics.ts'
 
@@ -15,6 +16,7 @@ export interface SessionActions {
   moveTo(to: Position, range: number): Promise<{ finalPosition: Position; blocksTraveled: number }>
   chat(message: string): void
   gather(resource: string, maxDistance: number, count: number): Promise<GatherResult>
+  craft(item: string): Promise<CraftResult>
   stopMoving(): void
 }
 
@@ -58,6 +60,8 @@ export function timeoutMessage(action: string, timeoutMs: number): string {
     case 'move':
     case 'follow':
       return `you did not arrive within ${budget} and stopped where you stood — the destination may be unreachable from here; pick a nearer or different spot and try again`
+    case 'craft':
+      return `the crafting errand ran past its ${budget} limit and was called off — if the walk to a crafting table ate the time, move nearer to one (or carry your own) and try again`
     default:
       return `'${action}' ran past its ${budget} limit and was abandoned — try again with a smaller version of the same intent`
   }
@@ -283,6 +287,25 @@ export class CommandExecutor {
             // also honest, but NOT retryable: the same empty hands fail the
             // same way — the message says what would change that
             throw new ActionError('TOOL_REQUIRED', (err as Error).message, false)
+          }
+          throw err
+        }
+      }
+      case 'craft': {
+        const session = this.requireSession(payload.villagerId)
+        const { item } = payload.params as { item?: string }
+        if (!item || typeof item !== 'string') {
+          throw new ActionError('INVALID_PARAMS', 'craft requires params.item — what to craft', false)
+        }
+        try {
+          return { ...(await session.craft(item)) }
+        } catch (err) {
+          // The body throws coded, prescriptive failures (crafting.ts) —
+          // pass code + retryability through untouched; the message is the
+          // villager's next percept and must arrive verbatim.
+          const { code, retryable } = err as Error & { code?: string; retryable?: boolean }
+          if (code) {
+            throw new ActionError(code, (err as Error).message, retryable ?? false)
           }
           throw err
         }

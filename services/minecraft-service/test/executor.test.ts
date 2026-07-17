@@ -17,6 +17,18 @@ function gatherResult(blockType = 'oak_log', collected = 1) {
   }
 }
 
+/** A completed craft in the SV-3 result shape. */
+function craftResult(itemName = 'oak_planks', crafted = 4) {
+  return {
+    item: 'planks',
+    itemName,
+    crafted,
+    tableUsed: false,
+    tablePlaced: false,
+    position: { x: 0, y: 64, z: 0 },
+  }
+}
+
 function command(action: string, params: Record<string, unknown> = {}, timeoutMs = 5_000): EventEnvelope {
   return {
     eventId: '019f8e2c-0000-7000-8000-00000000c001',
@@ -49,6 +61,7 @@ function harness(overrides: Partial<ExecutorDeps> = {}, sessionOverrides: Partia
     moveTo: vi.fn(async () => ({ finalPosition: { x: 10, y: 64, z: 0 }, blocksTraveled: 10 })),
     chat: vi.fn(),
     gather: vi.fn(async () => gatherResult()),
+    craft: vi.fn(async () => craftResult()),
     stopMoving: vi.fn(),
     ...sessionOverrides,
   }
@@ -163,6 +176,7 @@ describe('CommandExecutor', () => {
       moveTo: vi.fn(),
       chat: vi.fn(),
       gather: vi.fn(async () => gatherResult()),
+      craft: vi.fn(async () => craftResult()),
       stopMoving: vi.fn(),
     }
     const mover: SessionActions = {
@@ -172,6 +186,7 @@ describe('CommandExecutor', () => {
       moveTo: vi.fn(async () => ({ finalPosition: { x: 49, y: 64, z: 50 }, blocksTraveled: 70 })),
       chat: vi.fn(),
       gather: vi.fn(async () => gatherResult()),
+      craft: vi.fn(async () => craftResult()),
       stopMoving: vi.fn(),
     }
     const h = harness({ getSession: (id) => (id === 'bram-id' ? target : mover) })
@@ -274,6 +289,58 @@ describe('CommandExecutor', () => {
     expect(message).toContain('count') // the ask-for-less lever
     expect(message).toContain('maxDistance') // the nearer-target lever
     expect(message).not.toContain('no outcome within') // the bare M1 line is gone
+  })
+
+  it('craft passes the item through and completes with the body result', async () => {
+    const h = harness()
+    await h.executor.execute(command('craft', { item: 'planks' }))
+    expect(h.session.craft).toHaveBeenCalledWith('planks')
+    expect(h.outcomes[0]!.eventType).toBe('ActionCompleted')
+    const result = h.outcomes[0]!.extra.result as { itemName: string; crafted: number }
+    expect(result.itemName).toBe('oak_planks')
+    expect(result.crafted).toBe(4)
+  })
+
+  it('craft without params.item is INVALID_PARAMS without touching the bot', async () => {
+    const h = harness()
+    await h.executor.execute(command('craft'))
+    expect(h.session.craft).not.toHaveBeenCalled()
+    expect(h.outcomes[0]!.eventType).toBe('ActionFailed')
+    expect(h.outcomes[0]!.extra.errorCode).toBe('INVALID_PARAMS')
+  })
+
+  it('coded craft failures carry code, retryability, and the prescriptive prose verbatim', async () => {
+    const prose = 'crafting wooden pickaxe needs a crafting table — none stands within 16 blocks and you carry none; craft a crafting_table first (4 planks of any wood)'
+    const h = harness(
+      {},
+      {
+        craft: vi.fn(async () => {
+          const err = new Error(prose) as Error & { code?: string; retryable?: boolean }
+          err.code = 'TOOL_REQUIRED'
+          err.retryable = false
+          throw err
+        }),
+      },
+    )
+    await h.executor.execute(command('craft', { item: 'wooden_pickaxe' }))
+    expect(h.outcomes[0]!.eventType).toBe('ActionFailed')
+    expect(h.outcomes[0]!.extra.errorCode).toBe('TOOL_REQUIRED')
+    expect(h.outcomes[0]!.extra.retryable).toBe(false)
+    expect(h.outcomes[0]!.extra.errorMessage).toBe(prose) // the villager reads this verbatim next tick
+  })
+
+  it('a timed-out craft reads as prescriptive prose that names the table walk', async () => {
+    const h = harness(
+      {},
+      { craft: vi.fn(() => new Promise<never>(() => {})) }, // a craft that never settles
+    )
+    const run = h.executor.execute(command('craft', { item: 'furnace' }, 5_000))
+    await vi.advanceTimersByTimeAsync(5_001)
+    await run
+    expect(h.outcomes[0]!.extra.errorCode).toBe('TIMEOUT')
+    const message = h.outcomes[0]!.extra.errorMessage as string
+    expect(message).toContain('crafting table')
+    expect(message).not.toContain('no outcome within')
   })
 
   it('a dig that cannot drop (stone, empty hands) is TOOL_REQUIRED and NOT retryable', async () => {
