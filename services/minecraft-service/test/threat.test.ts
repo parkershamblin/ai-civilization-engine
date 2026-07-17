@@ -107,6 +107,7 @@ function harness(over: {
   stance?: 'brave' | 'cautious'
   fightOutcome?: 'killed' | 'lost' | 'abandoned' | null
   fleeOutcome?: 'escaped' | 'cornered' | 'abandoned'
+  maneuverCooldownMs?: number
 } = {}): Harness {
   const hostiles: TrackedHostile[] = []
   const emitted: Emitted[] = []
@@ -142,7 +143,9 @@ function harness(over: {
     recordResponse: (response, outcome) => responses.push({ response, outcome }),
     generation: () => generation.value,
     log: { info: () => {}, warn: () => {} },
-    config: { alertRadius: 24 },
+    // cooldown 0 in the base harness: maneuver-cadence tests drive passes
+    // explicitly; the cooldown has its own test below
+    config: { alertRadius: 24, maneuverCooldownMs: over.maneuverCooldownMs ?? 0 },
   }
   return { watcher: new ThreatWatcher(deps), hostiles, emitted, cries, busy, generation, episodes, responses, fight, flee }
 }
@@ -240,6 +243,20 @@ describe('ThreatWatcher episodes', () => {
     expect(h.watcher.episodeOpen).toBe(false)
     expect(h.emitted.at(-1)).toMatchObject({ phase: 'escaped' })
     expect(h.episodes).toEqual(['escaped'])
+  })
+
+  it('a failed maneuver waits out the cooldown before the next attempt (event-loop economy)', async () => {
+    const h = harness({ fleeOutcome: 'cornered', maneuverCooldownMs: 10_000 })
+    h.hostiles.push(zombie({ distance: 8 }))
+    await pass(h) // spotted
+    await pass(h) // first maneuver runs immediately
+    expect(h.flee).toHaveBeenCalledTimes(1)
+    await pass(h) // inside the cooldown — no new maneuver
+    await pass(h)
+    expect(h.flee).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(10_001)
+    await pass(h)
+    expect(h.flee).toHaveBeenCalledTimes(2) // cooldown over — retry
   })
 
   it('never claims the body while a command runs — v1 has no preemption', async () => {

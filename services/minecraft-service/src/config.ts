@@ -59,6 +59,11 @@ const schema = z.object({
   THREAT_MAX_CONCURRENT_FIGHTS: z.coerce.number().int().min(0).default(4),
   THREAT_FIGHT_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15000),
   THREAT_FLEE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(12000),
+  // Backoff between maneuvers within one episode (the hazard escapeRetryMs
+  // pattern): the first runs immediately; a failed one waits. Bounds the
+  // fleet's night-flee duty cycle — 20 back-to-back flee cycles pinned the
+  // event loop on the first night. 0 restores the hot loop.
+  THREAT_MANEUVER_COOLDOWN_MS: z.coerce.number().int().min(0).default(5000),
   // Flee buddy bias: steer toward the nearest villager inside a 60° cone of
   // the away-vector (fleeing INTO the village is story). 0 disables.
   THREAT_FLEE_BUDDY_RADIUS: z.coerce.number().int().min(0).default(32),

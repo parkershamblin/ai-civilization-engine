@@ -493,7 +493,7 @@ export class BotSession {
       recordResponse: (response, outcome) => threatResponses.inc({ response, outcome }),
       generation: () => this.spawnGeneration,
       log: this.log,
-      config: { alertRadius: THREAT_ALERT_RADIUS },
+      config: { alertRadius: THREAT_ALERT_RADIUS, maneuverCooldownMs: config.THREAT_MANEUVER_COOLDOWN_MS },
     })
     this.threatTimer = setInterval(() => this.threatWatcher?.check(), config.THREAT_WATCH_INTERVAL_MS)
   }

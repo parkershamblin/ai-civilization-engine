@@ -154,6 +154,13 @@ export interface ThreatWatcherDeps {
   log: ThreatLog
   config: {
     alertRadius: number
+    /** backoff between maneuvers within one episode (the hazard
+     *  escapeRetryMs pattern). The FIRST maneuver runs immediately; a flee
+     *  that ended cornered waits this long before the next attempt — at
+     *  night the whole fleet flees perpetually, and back-to-back 12s flee
+     *  cycles × 20 bots pinned the event loop (measured 2026-07-17,
+     *  99.9% CPU on the first night). */
+    maneuverCooldownMs: number
   }
 }
 
@@ -164,6 +171,8 @@ interface Episode {
   response: ThreatResponse | null
   clearPasses: number
   lastOverwhelmedAt: number
+  /** 0 until the first maneuver ends — feeds the maneuver cooldown */
+  lastManeuverEndedAt: number
   /** per-target failed fights — feeds the decision table's blacklist row */
   failedFights: Map<number, number>
   /** set by a victorious fight; the close emits killed instead of escaped */
@@ -271,6 +280,7 @@ export class ThreatWatcher {
       response: null,
       clearPasses: 0,
       lastOverwhelmedAt: 0,
+      lastManeuverEndedAt: 0,
       failedFights: new Map(),
       lastKill: false,
     }
@@ -313,6 +323,12 @@ export class ThreatWatcher {
     }
     if (this.deps.getBusy() !== null || this.deps.hazardOpen()) {
       return // v1 = no preemption: a running action keeps the body until its watchdog window
+    }
+    if (
+      episode.lastManeuverEndedAt !== 0 &&
+      Date.now() - episode.lastManeuverEndedAt < this.deps.config.maneuverCooldownMs
+    ) {
+      return // backoff between attempts — a flee that just failed re-fails hot
     }
     const nearest = inAlert[0]!
     episode.threatType = nearest.name // the episode narrates the current nearest
@@ -389,6 +405,9 @@ export class ThreatWatcher {
       this.deps.log.warn({ err: (err as Error).message }, 'threat maneuver crashed')
     } finally {
       ctx.abandoned = true
+      if (this.episode) {
+        this.episode.lastManeuverEndedAt = Date.now()
+      }
       this.deps.setBusy(null)
       this.maneuverInFlight = false
     }

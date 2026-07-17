@@ -18,7 +18,11 @@ const POLL_MS = 250
 /** full-charge swing spacing, spike-validated on 1.21.6 (~4-5s stone-sword TTK) */
 const SWING_INTERVAL_MS = 650
 const ATTACK_REACH = 3.5
-export const FLEE_DISTANCE = 24
+/** One flee hop. Shorter than the 24-block original: A* cost grows
+ *  super-linearly with distance on rough terrain, the loop re-hops anyway,
+ *  and 20 concurrent night flees at 24 blocks pinned the event loop
+ *  (measured 2026-07-17). */
+export const FLEE_DISTANCE = 16
 /** a second hostile within this along the flee path deflects the bearing */
 const DEFLECT_RADIUS = 16
 /** cornered = no net movement across this window while fleeing. Must be
