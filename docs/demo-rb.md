@@ -74,11 +74,18 @@ retries the receipt (#47).
    Expect some wrong-looking blocks on 1.21.6 tiles: prismarine-viewer
    1.33.0's assets stop at 1.21.4 (upstream #473) — cosmetic only.
 
-   | Fault injected (2026-07-22, throwaway race) | Fleet effect |
+   | Fault (2026-07-22, throwaway attempt `019f8bec`, 58 min, ended honest) | Fleet effect |
    |---|---|
-   | `docker kill` pov-rig mid-race | none — sessions 6, reconnects +0 |
-   | SIGSEGV in-container (supervised restart path) | none — auto-restarted, tiles recovered |
-   | trail-particle storm at cams + racers, viewers live | none — zero partial-packet lines (post-patch) |
+   | REAL V8 heap OOM abort in the rig (unplanned, mid-race) | none — 6/0; auto-restart by policy in 19s, cams re-verified, tiles back unattended |
+   | `docker kill` (SIGKILL), left dead 99s | none — 6/0, race kept ticking; manual `up -d` (kill = user stop, policy correctly silent) |
+   | 900 trail particles at all six cams, viewers live | none — 6/0, tiles tracking |
+   | 900 trail particles at all six racers, viewers live | none — 6/0; 0 partial-packet lines in BOTH processes; mspt avg 2.3 ms |
+
+   Whole-race totals: `civ_bot_sessions` flat 6, `civ_bot_reconnects_total` 0,
+   honest-race deltas 0/0, all six tiles live in `/mission-control?pov=1`.
+   Rig OOM cadence under 6-tile browsing was ~1 per 25 min at the 1024 MB
+   heap cap — a 19 s tile gap each time; raise `--max-old-space-size` in
+   compose if that annoys a shoot.
 3. **The ledger receipt** — terminal shot of the harness output ending in
    `RACE WON — honest-race assertion: CLEAN`, or:
    ```
