@@ -61,6 +61,45 @@ task smoke                  # canary: one bot connects to the MC server and chat
 Consoles once `task up` is green: Redpanda console `:8085`, Grafana `:3001`
 (admin/admin), Prometheus `:9090`.
 
+## Live demo (`/demo`)
+
+A single recruiter-facing screen that reads in ten seconds — the world as the
+visual anchor, the race, and, leading everything, the **event-sourcing audit
+trail**: an always-climbing "events in ledger" counter and a plain-English
+activity feed make the claim concrete — every milestone is a stored event with a
+causation chain, nothing on screen is a screenshot. Each panel is self-fetching
+and degrades to a labelled "reconnecting" state; nothing user-facing can take
+down the fleet.
+
+```sh
+task demo                          # full stack + dashboard at http://localhost:3000/demo
+node scripts/race-rb2.mjs --mobs   # (separately) run a live 3v3 race to watch it fill in
+```
+
+`task demo` rebuilds the demo's two services (the ledger-count and retrieval
+endpoints), seeds the filmed flagship take into the ledger so the result card is
+reconstructed from real events, then runs the dashboard. When no race is
+running, the race panel shows that flagship result (Normal + hostiles, blue in
+11:00.6, honest-race CLEAN). For a clean 1080p recording without the dev
+overlay, `npm run build && npm run start --workspace @civ/dashboard` instead.
+
+**Panels:** a live world view (a 2D map plotting racer positions straight from
+`VillagerMoved` ledger events — the audit trail as a picture), the race
+scoreboard, event-pipeline throughput + the ledger counter, per-agent pgvector
+memory retrievals, and the plain-English feed with each row expandable to its
+raw ledger event. Small badges name the stack behind each panel (Redpanda,
+PostgreSQL, pgvector, Prometheus).
+
+**World view — the 3D note.** The default is the 2D ledger reconstruction (safe,
+always works). An optional 3D prismarine-viewer runs as a *separate*,
+crash-contained spectator process (`task demo:pov`); it stays off by default and
+will not render until upstream ships MC 1.21.6 support (prismarine-viewer
+[#473](https://github.com/PrismarineJS/prismarine-viewer/issues/473) /
+[#475](https://github.com/PrismarineJS/prismarine-viewer/pull/475) are open,
+unreleased). If it ever crashes, the slot fails over to the 2D map automatically.
+
+<!-- TODO: add a 1920x1080 screenshot of /demo mid-race at docs/img/demo.png and embed it here -->
+
 ## Layout
 
 ```

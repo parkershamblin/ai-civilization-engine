@@ -65,6 +65,25 @@ tasks:
       - node scripts/provision-topics.mjs
       - "{{.COMPOSE}} -f infrastructure/docker/docker-compose.dev.yml --profile infra --profile app up -d"
 
+  demo:
+    desc: "Recruiter demo: full stack + the /demo dashboard at http://localhost:3000/demo. Rebuilds the demo's two services (the new ledger-count + retrieval endpoints), seeds the flagship attempt into the ledger, then runs the dashboard in the foreground (Ctrl-C stops it). Watch it fill in with a live race: node scripts/race-rb2.mjs --mobs"
+    deps: [up:all]
+    cmds:
+      # up:all brings everything up (stale images); rebuild ONLY the two services
+      # this feature touched so their new endpoints are live (the up-reuses-stale-
+      # image trap). Naming individual services needs BOTH profiles.
+      - "{{.COMPOSE}} --profile infra --profile app up -d --build --no-deps event-service memory-service"
+      - node scripts/seed-flagship.mjs
+      - npm run dev --workspace @civ/dashboard
+
+  demo:pov:
+    desc: "Opt-in 3D spectator sidecar for the demo world view — a SEPARATE, expendable process (own port 3200). It may crash on MC 1.21.6 (prismarine-viewer 1.33.0); the crash is contained and the dashboard fails over to the 2D map. `task demo` leaves this OFF"
+    dir: services/minecraft-service
+    env:
+      MC_HOST: localhost # host-side sidecar reaches the :25565 server directly
+    cmds:
+      - npm run pov:spectator
+
   race:replay:
     desc: "Offline race-brain replay — seconds, NO world/docker/tick. Decision histogram at a rung against real Ollama. Args: RUNG=bare|coal|iron|furnace|ingot|win|all N=20"
     dir: services/agent-service
