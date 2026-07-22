@@ -13,8 +13,11 @@ trust the diff, not the commit message. Guard-arc state unchanged
 (session tenth): `.env` runs `THREAT_DEFAULT_STANCE=guard` (revert to
 cautious for speed records; the guard tax ≈80s); first_diamond parked
 on `rb-t2-diamond-wip`. Records: Easy 360.4s (`019f7337`), Normal 881s
-(`019f7352`), Normal+mobs 660.6s (`019f744d`, filmed take). POV_VIEWER
-stays 0 on 1.21.6 (fleet-lethal parse crash). Drill hygiene: clear
+(`019f7352`), Normal+mobs 660.6s (`019f744d`, filmed take). POV rig is
+SAFE now (PRs #68 + pov-sidecar): out-of-process `pov-rig` container,
+compose profile `pov` is the switch (never a fleet recreate); the old
+"fleet-lethal parse crash" was a fleet-wide minecraft-data trail-def bug,
+patched via patch-package — see docs/demo-rb.md 2b. Drill hygiene: clear
 packs before staged gives (full packs drop items silently); mute
 doMobSpawning between takes (an idle fleet under Normal spawning
 accumulates a 200-mob siege); consumer group is
