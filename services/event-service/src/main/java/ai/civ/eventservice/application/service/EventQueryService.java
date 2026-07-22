@@ -27,4 +27,9 @@ public class EventQueryService implements QueryEventsUseCase {
     public Optional<StoredEvent> byId(UUID eventId) {
         return store.findById(eventId);
     }
+
+    @Override
+    public long count() {
+        return store.count();
+    }
 }

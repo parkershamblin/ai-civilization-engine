@@ -30,7 +30,13 @@ from memory_service.scoring import (
     score_importance,
     score_sentiment,
 )
-from memory_service.metrics import memories_stored_total, memory_retrieval_seconds, reflections_total
+from memory_service.metrics import (
+    memories_stored_total,
+    memory_retrieval_seconds,
+    memory_retrievals_total,
+    reflections_total,
+)
+from memory_service.retrievals import record_retrieval
 from memory_service.settings import Settings
 
 
@@ -193,7 +199,16 @@ class MemoryService:
                 )
                 await session.commit()
 
-        memory_retrieval_seconds.observe(time.perf_counter() - started)
+        elapsed = time.perf_counter() - started
+        memory_retrieval_seconds.observe(elapsed)
+        # Fire-and-forget observability for the demo dashboard (Panel 4).
+        # Synchronous, O(1), after the DB work, and guarded — it must never add
+        # latency to nor fail a retrieval.
+        try:
+            memory_retrievals_total.inc()
+            record_retrieval(villager_id, query, k, len(winners), elapsed * 1000)
+        except Exception:  # pragma: no cover - defensive; the hook is best-effort
+            logger.debug("retrieval observability hook failed", exc_info=True)
         return winners
 
     async def reflect(self, villager_id: uuid.UUID) -> list[MemoryRecord]:

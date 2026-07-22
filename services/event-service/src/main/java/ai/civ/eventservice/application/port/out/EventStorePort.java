@@ -21,4 +21,7 @@ public interface EventStorePort {
     EventPage query(EventFilter filter);
 
     Optional<StoredEvent> findById(UUID eventId);
+
+    /** Total rows in the ledger — the durable, always-climbing audit-trail count. */
+    long count();
 }

@@ -11,4 +11,6 @@ public interface QueryEventsUseCase {
     EventPage list(EventFilter filter);
 
     Optional<StoredEvent> byId(UUID eventId);
+
+    long count();
 }

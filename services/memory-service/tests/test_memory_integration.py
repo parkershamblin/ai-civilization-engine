@@ -66,6 +66,13 @@ async def test_full_memory_lifecycle(service: MemoryService):
     count = next(s.value for s in collected.samples if s.name.endswith("_count"))
     assert count >= 3
 
+    # -- the demo-dashboard retrieval hook fired on the real search path -------
+    from memory_service.retrievals import snapshot
+
+    snap = snapshot()
+    assert snap["total"] >= 3
+    assert any(e["villagerId"] == str(ELARA) for e in snap["recent"])
+
 
 async def test_hnsw_ef_search_set_per_retrieval(database: Settings, embeddings):
     """The ANN query must run with ef_search sized to the candidate need

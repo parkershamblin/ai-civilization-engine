@@ -17,6 +17,11 @@ memories_stored_total = Counter(
     ["memory_type"],
 )
 
+memory_retrievals_total = Counter(
+    "civ_memory_retrievals_total",
+    "Memory searches served (the count companion to civ_memory_retrieval_seconds)",
+)
+
 embedding_seconds = Histogram(
     "civ_embedding_seconds",
     "Embedding call latency per provider",

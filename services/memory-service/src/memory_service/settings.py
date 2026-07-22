@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     retrieval_w_relevance: float = 1.0
     recency_decay_per_hour: float = 0.995
     retrieval_candidate_factor: int = 3
+    # Bounded in-memory ring of recent retrievals for the demo dashboard
+    # (Panel 4). Process-local, non-blocking, never persisted.
+    retrieval_ring_size: int = 200
     # HNSW recall: the villager_id filter post-filters ANN candidates, so
     # pgvector's default ef_search=40 under-recalls as the table grows. Sized
     # per retrieval as max(floor, k * candidate_factor * multiplier).

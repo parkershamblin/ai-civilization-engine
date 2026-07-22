@@ -33,6 +33,9 @@ public class EventsController {
     public record EventPageDto(List<EventDto> data, String nextCursor) {
     }
 
+    public record CountDto(long count) {
+    }
+
     @Operation(summary = "Query the append-only event store (cursor/keyset pagination, ordered by occurredAt)")
     @GetMapping("/events")
     public EventPageDto list(
@@ -49,6 +52,12 @@ public class EventsController {
                 cursor == null ? null : Cursor.decode(cursor), limit);
         EventPage page = queryEvents.list(filter);
         return new EventPageDto(page.data().stream().map(EventDto::from).toList(), page.nextCursor());
+    }
+
+    @Operation(summary = "Total rows in the ledger — the always-climbing audit-trail counter")
+    @GetMapping("/events/count")
+    public CountDto count() {
+        return new CountDto(queryEvents.count());
     }
 
     @Operation(summary = "Fetch a single event by its UUIDv7 eventId")

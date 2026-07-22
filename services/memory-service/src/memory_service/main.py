@@ -13,7 +13,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from memory_service.db import make_engine, make_session_factory
 from memory_service.embeddings import build_embedding_provider
@@ -22,6 +22,7 @@ from memory_service.llm import BudgetedSummarizer, build_summarizer_provider
 from memory_service.logging import configure_logging, logger
 from memory_service.models import Memory
 from memory_service.reflection import ReflectionJob, ReflectionUnavailable
+from memory_service.retrievals import configure as configure_retrievals, snapshot as retrievals_snapshot
 from memory_service.service import MemoryService, RetrievalWeights
 from memory_service.settings import Settings
 
@@ -32,6 +33,7 @@ configure_logging(settings.log_level)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("memory-service starting", db=settings.memory_db_name)
+    configure_retrievals(settings.retrieval_ring_size)
     http_client = httpx.AsyncClient()
     engine = make_engine(
         settings.memory_db_url, pool_size=settings.db_pool_size, max_overflow=settings.db_max_overflow
@@ -137,6 +139,24 @@ async def healthz() -> dict:
 @app.get("/metrics")
 async def metrics() -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/debug/retrievals")
+async def debug_retrievals() -> dict:
+    """Retrieval observability for the demo dashboard (Panel 4): a bounded ring
+    of recent searches + per-villager tallies (all in-memory, non-blocking).
+    `memoriesStored` is a separate COUNT(*) run on THIS endpoint's request path
+    — never the search hot path — and degrades to null rather than 500ing."""
+    snap = retrievals_snapshot()
+    try:
+        async with app.state.sessions() as session:
+            snap["memoriesStored"] = (
+                await session.execute(select(func.count()).select_from(Memory))
+            ).scalar()
+    except Exception:
+        logger.debug("memoriesStored count failed", exc_info=True)
+        snap["memoriesStored"] = None
+    return snap
 
 
 @app.post("/memories", status_code=201)

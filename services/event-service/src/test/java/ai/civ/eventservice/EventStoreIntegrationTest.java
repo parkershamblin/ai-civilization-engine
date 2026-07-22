@@ -125,6 +125,9 @@ class EventStoreIntegrationTest {
         await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
                 assertThat(getEvents("?limit=100").get("data")).hasSize(2));
 
+        // the ledger counter is the dashboard's audit-trail hero number
+        assertThat(getEvents("/count").get("count").asLong()).isEqualTo(2);
+
         // ---- 3. every envelope field survives the round trip ----------------
         JsonNode spawned = getEvents("?type=VillagerSpawned").get("data").get(0);
         JsonNode expected = json.readTree(fixture("VillagerSpawned.v1.json"));
@@ -153,6 +156,7 @@ class EventStoreIntegrationTest {
         await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
                 assertThat(getEvents("?type=MemoryFormed").get("data")).hasSize(1));
         assertThat(getEvents("?limit=100").get("data")).hasSize(3); // not 4 — the duplicate vanished
+        assertThat(getEvents("/count").get("count").asLong()).isEqualTo(3); // count reflects deduped inserts, not deliveries
 
         // ---- 5. the SSE stream carried the live events (and not the dup) ----
         String spawnedId = expected.get("eventId").asText();

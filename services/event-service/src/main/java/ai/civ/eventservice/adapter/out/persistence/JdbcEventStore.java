@@ -140,6 +140,11 @@ class JdbcEventStore implements EventStorePort {
                 .optional();
     }
 
+    @Override
+    public long count() {
+        return jdbc.sql("SELECT count(*) FROM events").query(Long.class).single();
+    }
+
     private static StoredEvent mapRow(ResultSet rs, int rowNum) throws SQLException {
         UUID causationId = rs.getObject("causation_id", UUID.class);
         return new StoredEvent(
